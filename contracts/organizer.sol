@@ -2,20 +2,16 @@ pragma solidity >=0.6.0 <0.7.0;
 import "./varianceSwapHandler.sol";
 import "./longVarianceToken.sol";
 import "./shortVarianceToken.sol";
-import "./oracleDeployer.sol";
 
 contract organizer is Ownable {
 	address bigMathAddress;
-
-	oracleDeployer oracleDeployerContract;
 
 	address[] public varianceSwapInstances;
 
 	mapping(address => address) public varianceToStakeHub;
 
-	constructor(address _bigMathAddress, address _oracleDeployerAddress) public {
+	constructor(address _bigMathAddress) public {
 		bigMathAddress = _bigMathAddress;
-		oracleDeployerContract = oracleDeployer(_oracleDeployerAddress);
 	}
 
 	function varianceSwapInstancesLength() public view returns(uint) {
@@ -23,18 +19,11 @@ contract organizer is Ownable {
 	}
 
 
-	function deployVarianceInstance(address _underlyingAssetAddress, address _strikeAssetAddress, address _payoutAssetAddress,
-		uint _startTimestamp, uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1, uint _cap) public onlyOwner {
+	function deployVarianceInstance(string memory phrase, address _payoutAssetAddress, address _oracleAddress, uint _startTimestamp,
+		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1, uint _cap) public onlyOwner {
 
-		address _oracleAddress = oracleDeployerContract.oracles(_underlyingAssetAddress, _strikeAssetAddress);
-		if (_oracleAddress == address(0)) {
-			(bool success, ) = address(oracleDeployerContract).call(abi.encodeWithSignature("deploy(address,address)", _underlyingAssetAddress, _strikeAssetAddress));
-			require(success, "failed to deploy oracle");
-			_oracleAddress = oracleDeployerContract.oracles(_underlyingAssetAddress, _strikeAssetAddress);
-		}
-
-		varianceSwapHandler vsh = new varianceSwapHandler(_underlyingAssetAddress, _strikeAssetAddress, _payoutAssetAddress, 
-			_oracleAddress, bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
+		varianceSwapHandler vsh = new varianceSwapHandler(phrase, _payoutAssetAddress, _oracleAddress, bigMathAddress,
+			_startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
 
 		address longVariance = address(new longVarianceToken(address(vsh)));
 		address shortVariance = address(new shortVarianceToken(address(vsh)));

@@ -9,8 +9,7 @@ import "./IERC20.sol";
 contract varianceSwapHandler is Ownable {
 	using SafeMath for uint;
 
-	address public underlyingAssetAddress;
-	address public strikeAssetAddress;
+	string public phrase;
 	address public payoutAssetAddress;
 	address public oracleAddress;
 	address public bigMathAddress;
@@ -89,12 +88,11 @@ contract varianceSwapHandler is Ownable {
 	);
 
 
-	constructor (address _underlyingAssetAddress, address _strikeAssetAddress, address _payoutAssetAddress,
+	constructor (string memory _phrase, address _payoutAssetAddress,
 		address _oracleAddress, address _bigMathAddress, uint _startTimestamp,
 		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1,
 		uint _cap) public {
-		underlyingAssetAddress = _underlyingAssetAddress;
-		strikeAssetAddress = _strikeAssetAddress;
+		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
 		oracleAddress = _oracleAddress;
 		bigMathAddress = _bigMathAddress;
@@ -129,7 +127,7 @@ contract varianceSwapHandler is Ownable {
 	function getFirstPrice() public {
 		uint _startTimestamp = startTimestamp;
 		require(_startTimestamp < block.timestamp && previousPrice == 0);
-		uint _previousPrice = oracle(oracleAddress).fetchSpotAtTime(_startTimestamp, underlyingAssetAddress);
+		uint _previousPrice = oracle(oracleAddress).fetchSpotAtTime(_startTimestamp);
 		//prevent div by 0;
 		if (_previousPrice == 0) _previousPrice++;
 		previousPrice = _previousPrice;
@@ -142,7 +140,7 @@ contract varianceSwapHandler is Ownable {
 		intervalsCalculated++;
 		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(timeBetweenPriceSnapshots));
 		require(getAt < block.timestamp && previousPrice != 0 && !ready);
-		uint price = oracle(oracleAddress).fetchSpotAtTime(getAt, underlyingAssetAddress);
+		uint price = oracle(oracleAddress).fetchSpotAtTime(getAt);
 		/*
 			this will likely never be a problem
 			however if it is prevent div by 0
