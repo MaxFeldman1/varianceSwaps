@@ -14,9 +14,11 @@ const BN = web3.utils.BN;
 
 const phrase = "BTC/USD";
 
-//const kovanBtcUsdAggregatorAddress = "0x6135b13325bfC4B00278B4abC5e20bbce2D6580e";
+const kovanBtcUsdAggregatorAddress = "0x6135b13325bfC4B00278B4abC5e20bbce2D6580e";
+const kovanEthUsdAggregatorAddress = "0x9326BFA02ADD2366b30bacB125260Af641031331";
 
 const kovanBtcUsdOracleAddress = "0xB12d9b73597B4dB3C2e6FBCf20071fd846Cdc54f";
+const kovanEthUsdOracleAddress = "0xEb15231CB6437dA9558A1a2f8CE3C552dE36FB87";
 const kovanTokenAddress = "0xecF1bccb924E9BeFC24Ef7607618D41Ac8ec4e57";
 const kovanBigMathAddress = "0xb6a2AB86bB89c6D7552EBf070A35B9662A6de5e9";
 const kovanOrganizerAddress = "0xfd747A74EE96bb4C89E4CD3Ba3C2716c55b1f641";

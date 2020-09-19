@@ -56,10 +56,17 @@ contract oracle {
         price = uint(ai2.getAnswer(fetchRoundAtTimestamp(timestamp)));
     }
 
+    function fremostRoundWithSameTimestamp(uint _roundId) internal view returns (uint) {
+        uint timestamp = ai2.getTimestamp(_roundId);
+        _roundId++;
+        while (timestamp == ai2.getTimestamp(_roundId)) _roundId++;
+        return _roundId-1;
+    }
+
     function fetchRoundAtTimestamp(uint timestamp) public view returns (uint) {
         uint80 latest = uint80(ai2.latestRound());
         (uint fetchedTime, uint80 fetchedRound) = fetchRoundBehind(latest);
-        if (timestamp >= fetchedTime) return fetchedRound;
+        if (timestamp >= fetchedTime) return fremostRoundWithSameTimestamp(fetchedRound);
         latest = fetchedRound;
         uint80 back; // = 0
         uint80 next;
@@ -72,11 +79,11 @@ contract oracle {
             } else if (fetchedTime < timestamp) {
                 back = round;
                 next = (latest+round)>>1;
-            } else return fetchedRound;
+            } else return fremostRoundWithSameTimestamp(fetchedRound);
             round = next;
         } while (next != back);
         (,back) = fetchRoundBehind(back);
-        return back;
+        return fremostRoundWithSameTimestamp(back);
     }
     
 }
