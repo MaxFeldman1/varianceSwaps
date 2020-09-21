@@ -21,6 +21,17 @@ function stringMul(str, amount) {
         return ret;
 }
 
+function getBalanceString(bn, decimals) {
+	if (typeof bn === 'object' || typeof bn === "number") bn = bn.toString();
+	var ret;
+	if (bn.length <= decimals) ret = "0."+stringMul('0', decimals-bn.length)+bn;
+	else ret = bn.substring(0, bn.length-decimals)+'.'+bn.substring(bn.length-decimals);
+	//remove trailing 0s
+	for (var i = ret.length-1; ret[i] == '0'; ret = ret.substring(0,i), i=ret.length-1){}
+	if (ret[ret.length-1]=='.')ret = ret.substring(0,ret.length-1);
+	return ret;
+}
+
 function getForwardAdjustedString(str, decimals) {
 	str = str+"";
 	var halves = str.split('.');
@@ -83,18 +94,29 @@ contract('varance swap handler', function(accounts){
 		return oracleInstance.set(spot);
 	}
 
+	function getRealizedVariance(priceSeries) {
+		dailyMulplicativeReturns = [];
+		var cumulativeVariance = 0;
+		var cumulativeMulplicativeReturns = 0;
+		for (var i = 1; i < priceSeries.length; i++) {
+			dailyMulplicativeReturns.push((priceSeries[i]/priceSeries[i-1])-1);
+			cumulativeMulplicativeReturns += dailyMulplicativeReturns[i-1];
+		}
+		var meanMulplicativeReturn = cumulativeMulplicativeReturns/dailyMulplicativeReturns.length;
+		for (var i = 0; i < dailyMulplicativeReturns.length; i++) {
+			cumulativeVariance += Math.pow(dailyMulplicativeReturns[i]-meanMulplicativeReturn,2);
+		}
+		return 365.2422*cumulativeVariance/(dailyMulplicativeReturns.length-1);
+	}
+
+	function getStandardDeviation (array) {
+		const n = array.length;
+		const mean = array.reduce((a, b) => a + b) / n;
+		return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / (n-1));
+	}
+
 	it('gives correct payout', async () => {
 		priceSeries = [100,90,120,350,50,120,130,131,131,134,132];
-		dailyLogReturns = [];
-		dailyVariance = [];
-		cumulativeVariance = 0;
-		for (var i = 1; i < priceSeries.length;i++){
-			dailyLogReturns.push(Math.log(priceSeries[i]/priceSeries[i-1]));
-			dailyVariance.push(dailyLogReturns[i-1] * dailyLogReturns[i-1]);
-			cumulativeVariance+=dailyVariance[i-1];
-		}
-		averageVariance = cumulativeVariance / dailyVariance.length;
-
 		var timestamp = (await web3.eth.getBlock('latest')).timestamp;
 		await setPrice(priceSeries[0]);
 		//go beyound the start timestamp and before the end of the first interval
@@ -109,7 +131,7 @@ contract('varance swap handler', function(accounts){
 		}
 		assert.equal(await varianceSwapHandlerInstance.ready(), true, "ready for claiming");
 		realizedVariance = await varianceSwapHandlerInstance.nonCappedPayout();
-		inflatedAverageVariance = 365.2422*averageVariance;
+		inflatedAverageVariance = getRealizedVariance(priceSeries);
 		var decimals = payoutAtVarianceOf1.length-1; //where(string == "1"_+stingMul("0", n)) log10(string) = string.length-1
 		inflatedAverageVariance = new BN(getForwardAdjustedString(inflatedAverageVariance.toFixed(decimals), decimals));
 		assert.equal(realizedVariance.toString().length, inflatedAverageVariance.toString().length, "correct amount of varance digits");
