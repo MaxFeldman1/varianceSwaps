@@ -19,18 +19,23 @@ const kovanEthUsdAggregatorAddress = "0x9326BFA02ADD2366b30bacB125260Af641031331
 
 const kovanBtcUsdOracleAddress = "0xB12d9b73597B4dB3C2e6FBCf20071fd846Cdc54f";
 const kovanEthUsdOracleAddress = "0xEb15231CB6437dA9558A1a2f8CE3C552dE36FB87";
+
 const kovanTokenAddress = "0xecF1bccb924E9BeFC24Ef7607618D41Ac8ec4e57";
-const kovanBigMathAddress = "0xb6a2AB86bB89c6D7552EBf070A35B9662A6de5e9";
-const kovanOrganizerAddress = "0xfd747A74EE96bb4C89E4CD3Ba3C2716c55b1f641";
 
 const kovanUniswapFactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
 const kovanUniswapRouterV2Address = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 
-const stakeHubSept8_2020Address = "0x5205a69e68d30210587ee223480361020D4b5CF0";
+const kovanBigMathAddress = "0x54Ee4Eb03a7697600F1100814A949304887558B7";
+const kovanOrganizerAddress = "0x4605274d1E022038c5E749168Ce4B7EA7E59a26B";
+
 
 inflator0 = 4;
 inflator1 = 3;
 inflator2 = 2;
+
+startTimestamp = "1593561600";
+lengthOfPriceSeries = "184";
+
 
 lastStakeTimestamp = "1600560000";
 endStakingTimestamp = "1600646400";
@@ -39,12 +44,16 @@ destructionTimestamp = "1600732800";
 module.exports = async function(deployer) {
 
   tokenInstance = await token.at(kovanTokenAddress);
-  bigMathInstance = await bigMath.at(kovanBigMathAddress);
-  oracleInstance = await oracle.at(kovanBtcUsdOracleAddress);
-  organizerInstance = await organizer.at(kovanOrganizerAddress);
-  stakeHubInstance = await stakeHub.at(stakeHubSept8_2020Address);
+  oracleInstance = await oracle.at(kovanEthUsdOracleAddress);
   factoryInstance = await factory.at(kovanUniswapFactoryAddress);
   routerInstance = await router.at(kovanUniswapRouterV2Address);
+
+  organizerInstance = await organizer.at(kovanOrganizerAddress);
+  tokenSubUnits = (new BN(10)).pow(new BN(18));
+  payoutAtVarianceOf1 = tokenSubUnits.div(new BN(5)).toString();
+  cap = tokenSubUnits.toString();
+  await organizerInstance.deployVarianceInstance("ETH/USD", tokenInstance.address, oracleInstance.address, startTimestamp,
+    lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
   longVarianceTokenInstance = await longVarianceToken.at(await varianceSwapHandlerInstance.longVarianceTokenAddress());
