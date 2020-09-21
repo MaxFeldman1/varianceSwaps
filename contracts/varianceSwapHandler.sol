@@ -1,13 +1,15 @@
 pragma solidity >=0.6.0;
 import "./SafeMath.sol";
+import "./SignedSafeMath.sol";
 import "./oracle.sol";
 import "./BigMath.sol";
 import "./Ownable.sol";
 import "./destructable.sol";
 import "./IERC20.sol";
 
-contract varianceSwapHandler is Ownable {
+contract varianceSwapHandler is bigMathStorage, Ownable {
 	using SafeMath for uint;
+	using SignedSafeMath for int;
 
 	string public phrase;
 	address public payoutAssetAddress;
@@ -21,27 +23,9 @@ contract varianceSwapHandler is Ownable {
 
 	uint public startTimestamp;
 	uint32 public timeBetweenPriceSnapshots = 86400; //1 day
-	/*
-		Once we have the average daily variance we must annalize by multiplying by 365.2422 (the exact number of days per year)
-		we inflate this annualizer by 10**4 to maintain accuracy
-		in traditional finance the annualizer is 252 due to the limited number of trading days in a year
-		however we are able to find prices at any time of the year so we must adjust our annualizer accordingly
-	*/
-	uint public annualizer = 3652422;
 	uint16 public lengthOfPriceSeries;
 
 	uint public cap;
-	/*
-		if the average log return was 1
-		and thus the variance was 1**2 or 1
-		the corresponding payout (not considering the payout cap)
-		would be == payoutAtVarianceOf1
-
-		The payout scales down linearly
-		so that if variance was 0.5
-		payout == 0.5*payoutAtVarianceOf1
-	*/
-	uint public payoutAtVarianceOf1;
 
 	uint16 public intervalsCalculated;
 
@@ -50,8 +34,8 @@ contract varianceSwapHandler is Ownable {
 	bool public ready;
 	bool public calculate;
 
-	uint public previousPrice;
-	uint public cumulativeVariance;
+	int public previousPrice;
+	int public cumulativeDailyReturns;
 
 	uint public payoutAssetReserves;
 
@@ -101,8 +85,11 @@ contract varianceSwapHandler is Ownable {
 		cap = _cap;
 		feeAdjustedCap = _cap;
 		payoutAtVarianceOf1 = _payoutAtVarianceOf1;
+		seriesTermInflator = 10**36;
 		//subUnitsPayout = uint(10)**(IERC20(_payoutAssetAddress).decimals());
 	}
+
+	function getDailyReturns() public view returns(int[] memory _dailyReturns) {_dailyReturns = dailyReturns;}
 
 	/*
 		@Description: sets the addresses of the trusted contracts that are allowed to transfer positions
@@ -127,7 +114,7 @@ contract varianceSwapHandler is Ownable {
 	function getFirstPrice() public {
 		uint _startTimestamp = startTimestamp;
 		require(_startTimestamp < block.timestamp && previousPrice == 0);
-		uint _previousPrice = oracle(oracleAddress).fetchSpotAtTime(_startTimestamp);
+		int _previousPrice = int(oracle(oracleAddress).fetchSpotAtTime(_startTimestamp));
 		//prevent div by 0;
 		if (_previousPrice == 0) _previousPrice++;
 		previousPrice = _previousPrice;
@@ -140,42 +127,34 @@ contract varianceSwapHandler is Ownable {
 		intervalsCalculated++;
 		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(timeBetweenPriceSnapshots));
 		require(getAt < block.timestamp && previousPrice != 0 && !ready);
-		uint price = oracle(oracleAddress).fetchSpotAtTime(getAt);
+		int price = int(oracle(oracleAddress).fetchSpotAtTime(getAt));
 		/*
 			this will likely never be a problem
 			however if it is prevent div by 0
 		*/
 		if (price == 0) price++;
-		(bool success, ) = bigMathAddress.call(abi.encodeWithSignature("Variance(uint256,uint256)", price, previousPrice));
-		uint variance = uint(success ? BigMath(bigMathAddress).result() : 0);
-		cumulativeVariance += variance;
+		int _seriesTermInflator = int(seriesTermInflator);
+		int mulplicativeReturn = (price.mul(_seriesTermInflator)/previousPrice).sub(_seriesTermInflator);
+		summationDailyReturns += mulplicativeReturn;
 		previousPrice = price;
+		dailyReturns.push(mulplicativeReturn);
 		if (intervalsCalculated == lengthOfPriceSeries) {
-			calculate = true;
-			(success, ) = address(this).call(abi.encodeWithSignature("findPayout()"));
-			//we only expect that this was not sucessful if there was an overflow
-			if (!success) {
-				payout = cap;
-				ready = true;
-				calculate = false;
+			(bool success, ) = bigMathAddress.delegatecall(abi.encodeWithSignature("seriesVariance()"));
+			uint _nonCappedPayout;
+			uint _cap = cap;
+			if (success) {
+				nonCappedPayout = result;
+				_nonCappedPayout = result;
+			} 
+			else {
+				nonCappedPayout = _cap;
+				_nonCappedPayout = _cap;
 			}
+			payout = (_nonCappedPayout < _cap) ? _nonCappedPayout : _cap;
+			ready = true;
 		}
 	}
 
-	/*
-		@Description: this is only called once when the last variance has been found
-			calculates the payout of the contract
-	*/
-	function findPayout() public {
-		require(calculate);
-		//10**36 is the total amount the values returned by the big math contract are inflated by
-		//10**4 is the total amount that the annualizer is inflated by
-		//thus divide out 10**(36+4)
-		nonCappedPayout = cumulativeVariance.div(intervalsCalculated).mul(payoutAtVarianceOf1).mul(annualizer).div(10**40);
-		payout = (nonCappedPayout < cap) ? nonCappedPayout : cap;
-		ready = true;
-		calculate = false;
-	}
 
 	function mintVariance(address _to, uint _amount, bool _transfer) public {
 		IERC20 pa = IERC20(payoutAssetAddress);

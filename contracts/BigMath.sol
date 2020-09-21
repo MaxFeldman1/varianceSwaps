@@ -1,9 +1,11 @@
 pragma solidity >=0.6.0;
 import "./SignedSafeMath.sol";
 import "./SafeMath.sol";
+import "./bigMathStorage.sol";
 
-contract BigMath {
+contract BigMath is bigMathStorage {
 	using SafeMath for uint;
+	using SignedSafeMath for int;
 	/*
 		We avoid using safe math here where we can for efficiency
 	*/
@@ -14,19 +16,22 @@ contract BigMath {
 	int eToPoint4 = 1491824697641270317;
 	int shifter = 4 * 10**17;
 
-	uint public result;
-
 
 	/*
-		@Description: finds the naturalLog(a/b)**2
-			changes state variable result to the returned value
+		@Description: this function is meant to be called via delegatecall
+			This allows access to daily returns from which we can find the variance here
 	*/
-	function Variance(uint a, uint b) public returns (int dailyVariance){
-		dailyVariance = dailyLogReturn(a, b);
-		//daily variance is inflated by inflator * inflator
-		dailyVariance = dailyVariance * dailyVariance;
-		//because daily variance was just squared we do not need to convert to uint
-		result = uint(dailyVariance);
+	function seriesVariance() public {
+		uint _seriesTermInflator = seriesTermInflator;
+		uint seriesLength = dailyReturns.length;	//gas savings
+		int meanDailyReturn = summationDailyReturns.div(seriesLength.toInt());
+		uint summationVariance;
+		int inner;
+		for (uint i = 0; i < seriesLength; i++) {
+			inner = dailyReturns[i]-meanDailyReturn;
+			summationVariance += inner.mul(inner).toUint().div(_seriesTermInflator);
+		}
+		result = summationVariance.div(seriesLength.sub(1)).mul(payoutAtVarianceOf1).mul(annualizer).div(_seriesTermInflator).div(annualizerInflator);
 	}
 
 	/*
