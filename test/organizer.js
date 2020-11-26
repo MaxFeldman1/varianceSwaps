@@ -9,6 +9,7 @@ const factory = artifacts.require("UniswapV2Factory");
 const router = artifacts.require("UniswapV2Router02");
 const organizer = artifacts.require("organizer");
 const oracleDeployer = artifacts.require("oracleDeployer");
+const deployERC20Tokens = artifacts.require("deployERC20Tokens");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
@@ -29,7 +30,8 @@ contract('organizer', async function(accounts){
 		cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
 
 		oracleDeployerInstance = await oracleDeployer.new(factoryInstance.address);
-		organizerInstance = await organizer.new(bigMathInstance.address, oracleDeployerInstance.address);
+		longShotDeployerInstance = await deployERC20Tokens.new();
+		organizerInstance = await organizer.new(bigMathInstance.address, oracleDeployerInstance.address, longShotDeployerInstance.address);
 	});
 
 	it('deploys variance swap handlers', async () => {
