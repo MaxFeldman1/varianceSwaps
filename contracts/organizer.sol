@@ -2,16 +2,20 @@ pragma solidity >=0.6.0 <0.7.0;
 import "./varianceSwapHandler.sol";
 import "./longVarianceToken.sol";
 import "./shortVarianceToken.sol";
+import "./deployERC20Tokens.sol";
 
 contract organizer is Ownable {
 	address bigMathAddress;
 
 	address[] public varianceSwapInstances;
 
+	address public deployerAddress;
+
 	mapping(address => address) public varianceToStakeHub;
 
-	constructor(address _bigMathAddress) public {
+	constructor(address _bigMathAddress, address _deployerAddress) public {
 		bigMathAddress = _bigMathAddress;
+		deployerAddress = _deployerAddress;
 	}
 
 	function varianceSwapInstancesLength() public view returns(uint) {
@@ -25,9 +29,13 @@ contract organizer is Ownable {
 		varianceSwapHandler vsh = new varianceSwapHandler(phrase, _payoutAssetAddress, _oracleAddress, bigMathAddress,
 			_startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
 
-		address longVariance = address(new longVarianceToken(address(vsh)));
-		address shortVariance = address(new shortVarianceToken(address(vsh)));
+		address _deployerAddress = deployerAddress;
 
+		(bool success, ) = _deployerAddress.call(abi.encodeWithSignature("deploy(address)", address(vsh)));
+		require(success);
+
+		address longVariance = deployERC20Tokens(_deployerAddress).longVarAddress();
+		address shortVariance = deployERC20Tokens(_deployerAddress).shortVarAddress();
 		vsh.setAddresses(longVariance, shortVariance);
 
 		varianceSwapInstances.push(address(vsh));

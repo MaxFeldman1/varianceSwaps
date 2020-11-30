@@ -22,7 +22,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	address payable public sendFeeTo;
 
 	uint public startTimestamp;
-	uint32 public timeBetweenPriceSnapshots = 86400; //1 day
+	uint32 public constant timeBetweenPriceSnapshots = 1 days;
 	uint16 public lengthOfPriceSeries;
 
 	uint public cap;

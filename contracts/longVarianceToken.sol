@@ -6,6 +6,10 @@ import "./IERC20.sol";
 contract longVarianceToken is IERC20 {
     uint8 public override decimals = 18;
 
+    string constant public name = "long variance token";
+
+    string constant public symbol = "LVT";
+
     mapping(address => mapping(address => uint256)) public override allowance;
 
     address varianceSwapHandlerAddress;

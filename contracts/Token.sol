@@ -3,7 +3,8 @@ pragma solidity >=0.6.0;
 contract Token {
     uint8 public decimals = 18;
     uint256 public totalSupply;
-    string public symbol = "TKN";
+    string public symbol = "TKN2";
+    string public name = "Token 2";
 
     event Transfer(
         address indexed _from,

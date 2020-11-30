@@ -29,6 +29,10 @@ contract stakeHub is Ownable, destructable, ERC20 {
 	bool public readyForDistribution;
 	uint public totalRewardToDistribute;
 
+	string public constant name = "Feldmex Rewards Token";
+	string public constant symbol = "FRT";
+	uint8 public constant decimals = 18;
+
 	struct stake {
 		uint timestamp;
 		uint amount;
