@@ -119,7 +119,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	function getFirstPrice() public {
 		uint _startTimestamp = startTimestamp;
 		require(_startTimestamp < block.timestamp && previousPrice == 0);
-		int _previousPrice = int(oracle(oracleAddress).fetchSpotAtTime(_startTimestamp, underlyingAssetAddress));
+		int _previousPrice = int(oracle(oracleAddress).fetchSpotAtTime(_startTimestamp));
 		//prevent div by 0;
 		if (_previousPrice == 0) _previousPrice++;
 		previousPrice = _previousPrice;
@@ -132,7 +132,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		intervalsCalculated++;
 		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(timeBetweenPriceSnapshots));
 		require(getAt < block.timestamp && previousPrice != 0 && !ready);
-		int price = int(oracle(oracleAddress).fetchSpotAtTime(getAt, underlyingAssetAddress));
+		int price = int(oracle(oracleAddress).fetchSpotAtTime(getAt));
 		/*
 			this will likely never be a problem
 			however if it is prevent div by 0

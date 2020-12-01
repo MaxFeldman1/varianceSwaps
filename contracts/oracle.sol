@@ -125,7 +125,7 @@ contract oracle is ITimeSeriesOracle {
         median = second;
     }
 
-    function fetchSpotAtTime(uint _time, address _underlyingAssetAddress) external view override returns (uint spot) {
+    function fetchSpotAtTime(uint _time) external view override returns (uint spot) {
         spot = medianPreviousIndecies(tsToIndex(_time));
         /*
             if _underlyingAssetAddress != underlyingAssetAddress we know that the requesting options handler contract
@@ -136,8 +136,8 @@ contract oracle is ITimeSeriesOracle {
                 underlyingAssetSubUnits * strikeAssetSubUnits / spot ==
                 underlyingAssetSubUnits * strikeAssetSubUnits / (trueSpot * strikeAssetSubUnits) == 
                 underlyingAssetSubUnits * trueSpot
-        */
         if (_underlyingAssetAddress != underlyingAssetAddress) spot = underlyingAssetSubUnits * strikeAssetSubUnits / spot;
+        */
     }
 
 }

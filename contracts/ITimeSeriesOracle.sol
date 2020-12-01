@@ -15,6 +15,6 @@ interface ITimeSeriesOracle {
 	function tsToIndex(uint _time) external view returns (uint index);
 	function heightToIndex(uint _height) external view returns (uint index);
 	function medianPreviousIndecies(uint _index) external view returns (uint median);
-	function fetchSpotAtTime(uint _time, address _underlyingAssetAddress) external view returns (uint spot);
+	function fetchSpotAtTime(uint _time) external view returns (uint spot);
 
 }
