@@ -43,8 +43,26 @@ contract stakeHub is Ownable, destructable, ERC20 {
 		uint rewardSent
 	);
 
+	event StartStake(
+		address staker,
+		uint amount,
+		uint8 indexTokenStaked,
+		uint indexUserStakeMapping
+	);
 
-	constructor(address _payoutAssetAddress, address _stakeable0, address _stakeable1, address _stakeable2,
+	event RemoveFromStake(
+		address staker,
+		uint amount,
+		uint8 indexTokenStaked,
+		uint indexUserStakeMapping
+	);
+
+	event EndAllStakes(
+		address staker,
+		uint8 indexTokenStaked
+	);
+
+constructor(address _payoutAssetAddress, address _stakeable0, address _stakeable1, address _stakeable2,
 		uint8 _inflator0, uint8 _inflator1, uint8 _inflator2, uint _lastSakingTimestamp,
 		uint _endStakingTimestamp, uint _destructionTimestamp) public {
 		payoutAsset = IERC20(_payoutAssetAddress);
@@ -76,16 +94,31 @@ contract stakeHub is Ownable, destructable, ERC20 {
 		if (_transfer) stakeAssetContract.transferFrom(msg.sender, address(this), _amount);
 
 		uint newBalance = stakeAssetContract.balanceOf(address(this));
+		uint _reserves;
+		uint _mappingIndex;
+
 		if (_index == 0){
-			stakes0[msg.sender].push(stake(block.timestamp, newBalance.sub(reserves0)));
+			_reserves = reserves0;
+			_mappingIndex = stakes0[msg.sender].length;
+			_amount = newBalance.sub(_reserves);
+			stakes0[msg.sender].push(stake(block.timestamp, _amount));
 			reserves0 = newBalance;
 		} else if (_index == 1) {
-			stakes1[msg.sender].push(stake(block.timestamp, newBalance.sub(reserves1)));
+			_reserves = reserves1;
+			_mappingIndex = stakes1[msg.sender].length;
+			_amount = newBalance.sub(_reserves);
+			stakes1[msg.sender].push(stake(block.timestamp, _amount));
 			reserves1 = newBalance;
 		} else {
-			stakes2[msg.sender].push(stake(block.timestamp, newBalance.sub(reserves2)));
+			_reserves = reserves2;
+			_mappingIndex = stakes2[msg.sender].length;
+			_amount = newBalance.sub(_reserves);
+			stakes2[msg.sender].push(stake(block.timestamp, _amount));
 			reserves2 = newBalance;
 		}
+
+		//we got the value for length user stakes before we pushed the new stake thus that length is the index of the new stake
+		emit StartStake(msg.sender, _amount, _index, _mappingIndex);
 	}
 
 
@@ -116,6 +149,7 @@ contract stakeHub is Ownable, destructable, ERC20 {
 			balanceOf[_to] = balanceOf[_to].add(_amount);
 			totalSupply = totalSupply.add(_amount);
 		}
+		emit RemoveFromStake(msg.sender, _amount, _mappingIndex, _arrayIndex);
 	}
 
 
@@ -140,6 +174,7 @@ contract stakeHub is Ownable, destructable, ERC20 {
 			totalSupply = balanceIncreace.add(totalSupply);
 		}
 		delete stakes0[msg.sender];
+		emit EndAllStakes(msg.sender, 0);
 	}
 
 	function endAllStakes1(address _to) public {
@@ -163,6 +198,7 @@ contract stakeHub is Ownable, destructable, ERC20 {
 			totalSupply = balanceIncreace.add(totalSupply);
 		}
 		delete stakes1[msg.sender];
+		emit EndAllStakes(msg.sender, 1);
 	}
 
 	function endAllStakes2(address _to) public {
@@ -186,6 +222,7 @@ contract stakeHub is Ownable, destructable, ERC20 {
 			totalSupply = balanceIncreace.add(totalSupply);
 		}
 		delete stakes2[msg.sender];
+		emit EndAllStakes(msg.sender, 2);
 	}
 
 	function destruct(address _to) public override onlyOwner {
