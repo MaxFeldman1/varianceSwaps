@@ -26,7 +26,6 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	address payable public sendFeeTo;
 
 	uint public startTimestamp;
-	uint32 public timeBetweenPriceSnapshots = 86400; //1 day
 	uint16 public lengthOfPriceSeries;
 
 	uint public cap;
@@ -130,7 +129,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	*/
 	function fetchFromOracle() public {
 		intervalsCalculated++;
-		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(timeBetweenPriceSnapshots));
+		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(1 days));
 		require(getAt < block.timestamp && previousPrice != 0 && !ready);
 		int price = int(oracle(oracleAddress).fetchSpotAtTime(getAt));
 		/*
@@ -233,7 +232,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	function destruct(address payable _to) public onlyOwner {
 		//can only be called 10 days after variance swaps have matured
-		require(block.timestamp > startTimestamp+lengthOfPriceSeries*timeBetweenPriceSnapshots + 864000);
+		require(block.timestamp > startTimestamp+(lengthOfPriceSeries+1)*(1 days));
 		IERC20 payoutAssetContract = IERC20(payoutAssetAddress);
 		//there is a possibility that the amount of tokens owned by the contract is greater than payoutAssetReserves variable may imply
 		uint tokenBalance = payoutAssetContract.balanceOf(address(this));

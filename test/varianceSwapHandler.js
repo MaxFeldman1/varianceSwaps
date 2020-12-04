@@ -76,7 +76,6 @@ contract('varance swap handler', function(accounts){
 		assert.equal(await varianceSwapHandlerInstance.oracleAddress(), oracleInstance.address, "correct oracle address");
 		assert.equal(await varianceSwapHandlerInstance.bigMathAddress(), bigMathInstance.address, "correct big math address");
 		assert.equal((await varianceSwapHandlerInstance.startTimestamp()).toString(), startTimestamp, "correct start timestamp");
-		assert.equal((await varianceSwapHandlerInstance.timeBetweenPriceSnapshots()).toString(), secondsPerDay, "correct interval");
 		assert.equal((await varianceSwapHandlerInstance.lengthOfPriceSeries()).toString(), lengthOfPriceSeries, "correct amount of price snapshots");
 		assert.equal((await varianceSwapHandlerInstance.payoutAtVarianceOf1()).toString(), payoutAtVarianceOf1, "correct payout at variance of 1");
 		assert.equal((await varianceSwapHandlerInstance.cap()).toString(), cap, "correct maximum payout");

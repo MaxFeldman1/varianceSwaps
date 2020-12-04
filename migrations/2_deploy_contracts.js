@@ -10,6 +10,7 @@ const router = artifacts.require("UniswapV2Router02");
 const organizer = artifacts.require("organizer");
 const oracleDeployer = artifacts.require("oracleDeployer");
 const deployERC20Tokens = artifacts.require("deployERC20Tokens");
+const deployStakeHub = artifacts.require("deployStakeHub");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
@@ -23,7 +24,8 @@ module.exports = async function(deployer) {
   routerInstance = await deployer.deploy(router, factoryInstance.address,
     /*This param does not impact functionality of this project*/defaultAddress);
 
-   deployerInstance = await deployer.deploy(deployERC20Tokens);
+  tokenDeployerInstance = await deployer.deploy(deployERC20Tokens);
+  stakeHubDeployerInstance = await deployer.deploy(deployStakeHub);
 
   asset1 = await deployer.deploy(token);
   asset2 = await deployer.deploy(token);
@@ -31,7 +33,8 @@ module.exports = async function(deployer) {
   payoutAtVariance1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
   cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
   oracleDeployerInstance = await deployer.deploy(oracleDeployer, factoryInstance.address);
-  organizerInstance = await deployer.deploy(organizer, bigMathInstance.address, oracleDeployerInstance.address, deployerInstance.address);
+  organizerInstance = await deployer.deploy(organizer, bigMathInstance.address,
+    oracleDeployerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
   await organizerInstance.deployVarianceInstance(asset1.address, asset2.address, tokenInstance.address,
     "3000000000", "90", payoutAtVariance1, cap);
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
@@ -50,7 +53,5 @@ module.exports = async function(deployer) {
   lastStakeTimestamp = 3000000000;
   endStakingTimestamp = 3000010000;
   destructionTimestamp = 3000020000;
-  stakeHubInstance = await deployer.deploy(stakeHub, tokenInstance.address, pair0, pair1, pair2,
-    inflator0, inflator1, inflator2, lastStakeTimestamp, endStakingTimestamp, destructionTimestamp);
-  await organizerInstance.addStakeHub(0, stakeHubInstance.address);
+  await organizerInstance.addStakeHub(0, pair0, pair1, pair2, inflator0, inflator1, inflator2);
 }
