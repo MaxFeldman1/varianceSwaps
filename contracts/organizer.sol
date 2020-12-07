@@ -15,6 +15,12 @@ contract organizer is Ownable {
 
 	address[] public varianceSwapInstances;
 
+	event DeployStakeHub(
+		uint varSwapIndex,
+		address varSwapAddress,
+		address stakeHubAddress
+	);
+
 	mapping(address => address) public varianceToStakeHub;
 
 	constructor(
@@ -104,5 +110,7 @@ contract organizer is Ownable {
 		vsh.setSendFeeAddress(_stakeHubAddress);
 
 		vsh.transferOwnership(owner);
+
+		emit DeployStakeHub(_index, _varianceAddress, _stakeHubAddress);
 	}
 }
