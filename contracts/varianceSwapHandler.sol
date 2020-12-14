@@ -9,13 +9,11 @@ import "./IERC20.sol";
 
 contract varianceSwapHandler is bigMathStorage, Ownable {
 
-
-
 	using SafeMath for uint;
 	using SignedSafeMath for int;
 
-	address public underlyingAssetAddress;
-	address public strikeAssetAddress;
+	string public phrase;
+
 	address public payoutAssetAddress;
 	address public oracleAddress;
 	address public bigMathAddress;
@@ -75,12 +73,11 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	);
 
 
-	constructor (address _underlyingAssetAddress, address _strikeAssetAddress, address _payoutAssetAddress,
+	constructor (string memory _phrase, address _payoutAssetAddress,
 		address _oracleAddress, address _bigMathAddress, uint _startTimestamp,
 		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1,
 		uint _cap) public {
-		underlyingAssetAddress = _underlyingAssetAddress;
-		strikeAssetAddress = _strikeAssetAddress;
+		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
 		oracleAddress = _oracleAddress;
 		bigMathAddress = _bigMathAddress;

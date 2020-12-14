@@ -50,6 +50,7 @@ function getForwardAdjustedString(str, decimals) {
 contract('varance swap handler', function(accounts){
 
 	it('before each', async () => {
+		phrase = "FDMX/WBTC";
 
 		tokenInstance = await token.new();
 		asset1 = await token.new();
@@ -65,13 +66,11 @@ contract('varance swap handler', function(accounts){
 		lengthOfPriceSeries = "10";
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString() + "000";
 		cap = payoutAtVarianceOf1.substring(0, payoutAtVarianceOf1.length-4);
-		varianceSwapHandlerInstance = await varianceSwapHandler.new(asset1.address, asset2.address, tokenInstance.address,
+		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
 			oracleInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);
-		assert.equal(await varianceSwapHandlerInstance.underlyingAssetAddress(), asset1.address, "correct underlying asset address");
-		assert.equal(await varianceSwapHandlerInstance.strikeAssetAddress(), asset2.address, "correct strike asset address");
 		assert.equal(await varianceSwapHandlerInstance.payoutAssetAddress(), tokenInstance.address, "correct payout asset address");
 		assert.equal(await varianceSwapHandlerInstance.oracleAddress(), oracleInstance.address, "correct oracle address");
 		assert.equal(await varianceSwapHandlerInstance.bigMathAddress(), bigMathInstance.address, "correct big math address");

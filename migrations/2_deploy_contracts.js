@@ -8,7 +8,7 @@ const stakeHub = artifacts.require("stakeHub");
 const factory = artifacts.require("UniswapV2Factory");
 const router = artifacts.require("UniswapV2Router02");
 const organizer = artifacts.require("organizer");
-const oracleDeployer = artifacts.require("oracleDeployer");
+const oracleTracker = artifacts.require("oracleTracker");
 const deployERC20Tokens = artifacts.require("deployERC20Tokens");
 const deployStakeHub = artifacts.require("deployStakeHub");
 
@@ -29,13 +29,21 @@ module.exports = async function(deployer) {
 
   asset1 = await deployer.deploy(token);
   asset2 = await deployer.deploy(token);
+
+  phrase = "FDMX/WBTC";
+
   bigMathInstance = await deployer.deploy(bigMath);
   payoutAtVariance1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
   cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
-  oracleDeployerInstance = await deployer.deploy(oracleDeployer, factoryInstance.address);
+  oracleTrackerInstance = await deployer.deploy(oracleTracker);
+
+  oracleInstance = await deployer.deploy(oracle, asset1.address, asset2.address);
+
+  oracleTrackerInstance.setOracle(phrase, oracleInstance.address);
+
   organizerInstance = await deployer.deploy(organizer, bigMathInstance.address,
-    oracleDeployerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
-  await organizerInstance.deployVarianceInstance(asset1.address, asset2.address, tokenInstance.address,
+    oracleTrackerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
+  await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
     "3000000000", "90", payoutAtVariance1, cap);
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
   longVarianceTokenInstance = await longVarianceToken.at(await varianceSwapHandlerInstance.longVarianceTokenAddress());

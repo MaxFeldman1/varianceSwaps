@@ -2,12 +2,12 @@ pragma solidity >=0.6.0 <0.7.0;
 import "./varianceSwapHandler.sol";
 import "./deployERC20Tokens.sol";
 import "./deployStakeHub.sol";
-import "./oracleDeployer.sol";
+import "./oracleTracker.sol";
 
 contract organizer is Ownable {
 	address bigMathAddress;
 
-	oracleDeployer oracleDeployerContract;
+	oracleTracker oracleTrackerContract;
 
 	address public tokenDeployerAddress;
 
@@ -25,13 +25,13 @@ contract organizer is Ownable {
 
 	constructor(
 		address _bigMathAddress,
-		address _oracleDeployerAddress,
+		address _oracleTrackerAddress,
 		address _tokenDeployerAddress,
 		address _stakeHubDeployerAddress
 		) public {
 
 		bigMathAddress = _bigMathAddress;
-		oracleDeployerContract = oracleDeployer(_oracleDeployerAddress);
+		oracleTrackerContract = oracleTracker(_oracleTrackerAddress);
 		tokenDeployerAddress = _tokenDeployerAddress;
 		stakeHubDeployerAddress = _stakeHubDeployerAddress;
 	}
@@ -41,17 +41,13 @@ contract organizer is Ownable {
 	}
 
 
-	function deployVarianceInstance(address _underlyingAssetAddress, address _strikeAssetAddress, address _payoutAssetAddress,
+	function deployVarianceInstance(string memory _phrase, address _payoutAssetAddress,
 		uint _startTimestamp, uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1, uint _cap) public onlyOwner {
 
-		address _oracleAddress = oracleDeployerContract.oracles(_underlyingAssetAddress, _strikeAssetAddress);
-		if (_oracleAddress == address(0)) {
-			(bool success, ) = address(oracleDeployerContract).call(abi.encodeWithSignature("deploy(address,address)", _underlyingAssetAddress, _strikeAssetAddress));
-			require(success, "failed to deploy oracle");
-			_oracleAddress = oracleDeployerContract.oracles(_underlyingAssetAddress, _strikeAssetAddress);
-		}
+		address _oracleAddress = oracleTrackerContract.oracles(_phrase);
+		require(_oracleAddress != address(0));
 
-		varianceSwapHandler vsh = new varianceSwapHandler(_underlyingAssetAddress, _strikeAssetAddress, _payoutAssetAddress, 
+		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, 
 			_oracleAddress, bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
 
 		address _tokenDeployerAddress = tokenDeployerAddress;

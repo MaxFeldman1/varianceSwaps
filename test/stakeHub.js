@@ -20,6 +20,7 @@ const helper = require("../helper/helper.js");
 contract('stakeHub', function(accounts){
 
 	it('before each', async () => {
+		phrase = "FDMX/WBTC";
 		tokenInstance = await token.new();
 		tkn1 = await token.new();
 		tkn2 = await token.new();
@@ -30,7 +31,7 @@ contract('stakeHub', function(accounts){
 		lengthOfPriceSeries = "10";
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
 		cap = payoutAtVarianceOf1+"0";
-		varianceSwapHandlerInstance = await varianceSwapHandler.new(tkn1.address, tkn2.address, tokenInstance.address,
+		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
 			oracleInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
