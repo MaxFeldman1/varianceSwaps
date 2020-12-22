@@ -143,15 +143,17 @@ contract('varance swap handler', function(accounts){
 	it('mints variance swaps', async () => {
 		//we want to test what will happen if we don't use an amount that is exactly divisible by subUnits
 		amount = (new BN(100)).mul(varianceTokenSubUnits).add(new BN(11111));
-		transferAmount = amount.mul(new BN(cap)).div(varianceTokenSubUnits).add(new BN(amount.mod(varianceTokenSubUnits).cmp(new BN(0)) == 0? 0 : 1));
-		await tokenInstance.approve(varianceSwapHandlerInstance.address, transferAmount.toString());
+		requiredCollateral = amount.mul(new BN(cap)).div(varianceTokenSubUnits).add(new BN(amount.mod(varianceTokenSubUnits).cmp(new BN(0)) == 0? 0 : 1));
+		amountMinted = requiredCollateral.mul(varianceTokenSubUnits).div(new BN(cap));
+		let contractBalance = await tokenInstance.balanceOf(varianceSwapHandlerInstance.address);
+		await tokenInstance.transfer(varianceSwapHandlerInstance.address, requiredCollateral.sub(contractBalance).toString());
 		prevTotalSupplyLong = await varianceSwapHandlerInstance.totalSupplyLong();
 		prevTotalSupplyShort = await varianceSwapHandlerInstance.totalSupplyShort();
-		rec = await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString(), true);
-		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString(), amount.toString(), "correct balance long variance");
-		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).toString(), amount.toString(), "correct balance short variance");
-		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).toString(), prevTotalSupplyLong.add(amount).toString(), "correct total supply long");
-		assert.equal((await varianceSwapHandlerInstance.totalSupplyShort()).toString(), prevTotalSupplyShort.add(amount).toString(), "correct total supply short");
+		rec = await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString(), false);
+		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString(), amountMinted.toString(), "correct balance long variance");
+		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).toString(), amountMinted.toString(), "correct balance short variance");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).toString(), prevTotalSupplyLong.add(amountMinted).toString(), "correct total supply long");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyShort()).toString(), prevTotalSupplyShort.add(amountMinted).toString(), "correct total supply short");
 	});
 
 	it('burns variance swaps', async () => {

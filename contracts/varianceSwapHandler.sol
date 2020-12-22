@@ -158,7 +158,6 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	function mintVariance(address _to, uint _amount, bool _transfer) public {
 		IERC20 pa = IERC20(payoutAssetAddress);
-		uint _cap = cap;
 		uint _feeAdjustedCap = feeAdjustedCap;
 		uint _subUnits = subUnits;
 		uint _payoutAssetReserves = payoutAssetReserves;
@@ -166,21 +165,20 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 			uint transferAmount = _amount.mul(_feeAdjustedCap);
 			transferAmount = transferAmount.div(_subUnits).add(transferAmount%_subUnits==0 ? 0 : 1);
 			pa.transferFrom(msg.sender, address(this), transferAmount);
-		}		uint newReserves = pa.balanceOf(address(this)).sub(_payoutAssetReserves);
+		}
+		uint newReserves = pa.balanceOf(address(this)).sub(_payoutAssetReserves);
 		//requiredNewReserves == amount*_feeAdjCap/subUnitsVarSwaps
 		//maxAmount == newReserves*_subUnitsVarSwaps/_feeAdjCap
-		uint maxAmt = newReserves.mul(_subUnits);
-		maxAmt = maxAmt.div(_feeAdjustedCap).add(maxAmt%_feeAdjustedCap==0 ? 0 : 1);
+		uint maxAmt = newReserves.mul(_subUnits).div(_feeAdjustedCap);
 		require(maxAmt >= _amount, "you attempted to mint too many swaps on too little collateral");
-		if (_amount == 0) _amount = maxAmt;
-		uint _fee = _amount.mul(_feeAdjustedCap).sub(_amount.mul(_cap)).div(_subUnits);
+		uint _fee = _amount.mul(_feeAdjustedCap).sub(_amount.mul(cap)).div(_subUnits);
 		pa.transfer(sendFeeTo, _fee);
 		payoutAssetReserves = newReserves.sub(_fee).add(_payoutAssetReserves);
-		balanceLong[_to] = _amount.add(balanceLong[_to]);
-		balanceShort[_to] = _amount.add(balanceShort[_to]);
-		totalSupplyLong = _amount.add(totalSupplyLong);
-		totalSupplyShort = _amount.add(totalSupplyShort);
-		emit Mint(_to, _amount);
+		balanceLong[_to] = maxAmt.add(balanceLong[_to]);
+		balanceShort[_to] = maxAmt.add(balanceShort[_to]);
+		totalSupplyLong = maxAmt.add(totalSupplyLong);
+		totalSupplyShort = maxAmt.add(totalSupplyShort);
+		emit Mint(_to, maxAmt);
 	}
 
 	function burnVariance(uint _amount, address _to) public {
