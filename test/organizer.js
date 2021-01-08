@@ -52,5 +52,22 @@ contract('organizer', async function(accounts){
 		oracleInstance = await oracle.at(await varianceSwapHandlerInstance.oracleAddress());
 	});
 
+	it('adds stakeHub', async () => {
+		stakeable0 = defaultAddress;
+		stakeable1 = defaultAddress.substring(0, defaultAddress.length-1)+"1";
+		stakeable2 = defaultAddress.substring(0, defaultAddress.length-1)+"2";
+		inflator0 = "1";
+		inflator1 = "2";
+		inflator2 = "3";
+		await organizerInstance.addStakeHub(0, stakeable0, stakeable1, stakeable2, inflator0, inflator1, inflator2);
+		stakeHubInstance = await stakeHub.at(await organizerInstance.varianceToStakeHub(varianceSwapHandlerInstance.address));
+		assert.equal(await stakeHubInstance.stakeable0(), stakeable0, "correct value of stakeable0");
+		assert.equal(await stakeHubInstance.stakeable1(), stakeable1, "correct value of stakeable1");
+		assert.equal(await stakeHubInstance.stakeable2(), stakeable2, "correct value of stakeable2");
+		assert.equal((await stakeHubInstance.inflator0()).toString(), inflator0, "correct value of inflator0");
+		assert.equal((await stakeHubInstance.inflator1()).toString(), inflator1, "correct value of inflator1");
+		assert.equal((await stakeHubInstance.inflator2()).toString(), inflator2, "correct value of inflator2");
+	});
+
 
 });
