@@ -4,10 +4,12 @@ const uniswapFactory = artifacts.require("UniswapV2Factory");
 const uniswapPair = artifacts.require("UniswapV2Pair");
 const iERC20 = artifacts.require("IERC20");
 const bigMath = artifacts.require("BigMath");
-const oracle = artifacts.require("oracle");
 const varianceSwapHandler = artifacts.require("varianceSwapHandler");
 const longVarianceToken = artifacts.require("longVarianceToken");
 const shortVarianceToken = artifacts.require("shortVarianceToken");
+const oracleContainer = artifacts.require("OracleContainer");
+const baseAggregator = artifacts.require("dummyAggregator");
+const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
@@ -21,18 +23,25 @@ contract('stakeHub', function(accounts){
 
 	it('before each', async () => {
 		phrase = "FDMX/WBTC";
+
+		baseAggregatorInstance = await baseAggregator.new(3);
+		aggregatorFacadeInstance = await aggregatorFacade.new(baseAggregatorInstance.address, phrase);
+		oracleContainerInstance = await oracleContainer.new();
+
+		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
+		await oracleContainerInstance.deploy(phrase);
+
 		tokenInstance = await token.new();
 		tkn1 = await token.new();
 		tkn2 = await token.new();
 		bigMathInstance = await bigMath.new();
-		oracleInstance = await oracle.new(tkn1.address, tkn2.address);
 
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
 		lengthOfPriceSeries = "10";
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
 		cap = payoutAtVarianceOf1+"0";
 		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
-			oracleInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+			oracleContainerInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);

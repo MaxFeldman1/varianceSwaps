@@ -8,9 +8,11 @@ const stakeHub = artifacts.require("stakeHub");
 const factory = artifacts.require("UniswapV2Factory");
 const router = artifacts.require("UniswapV2Router02");
 const organizer = artifacts.require("organizer");
-const oracleTracker = artifacts.require("oracleTracker");
 const deployERC20Tokens = artifacts.require("deployERC20Tokens");
 const deployStakeHub = artifacts.require("deployStakeHub");
+const oracleContainer = artifacts.require("OracleContainer");
+const baseAggregator = artifacts.require("dummyAggregator");
+const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
@@ -24,31 +26,32 @@ module.exports = async function(deployer) {
   routerInstance = await deployer.deploy(router, factoryInstance.address,
     /*This param does not impact functionality of this project*/defaultAddress);
 
+  phrase = "FDMX/WBTC";
+
+  baseAggregatorInstance = await baseAggregator.new(3);
+  aggregatorFacadeInstance = await aggregatorFacade.new(baseAggregatorInstance.address, phrase);
+  oracleContainerInstance = await oracleContainer.new();
+
+  await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
+  await oracleContainerInstance.deploy(phrase);
+
   tokenDeployerInstance = await deployer.deploy(deployERC20Tokens);
   stakeHubDeployerInstance = await deployer.deploy(deployStakeHub);
 
   asset1 = await deployer.deploy(token);
   asset2 = await deployer.deploy(token);
 
-  phrase = "FDMX/WBTC";
-
   bigMathInstance = await deployer.deploy(bigMath);
   payoutAtVariance1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
   cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
-  oracleTrackerInstance = await deployer.deploy(oracleTracker);
-
-  oracleInstance = await deployer.deploy(oracle, asset1.address, asset2.address);
-
-  oracleTrackerInstance.setOracle(phrase, oracleInstance.address);
 
   organizerInstance = await deployer.deploy(organizer, bigMathInstance.address,
-    oracleTrackerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
+    oracleContainerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
   await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
     "3000000000", "90", payoutAtVariance1, cap);
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
   longVarianceTokenInstance = await longVarianceToken.at(await varianceSwapHandlerInstance.longVarianceTokenAddress());
   shortVarianceTokenInstance = await shortVarianceToken.at(await varianceSwapHandlerInstance.shortVarianceTokenAddress());
-  oracleInstance = await oracle.at(await varianceSwapHandlerInstance.oracleAddress());
   pair0 = await factoryInstance.createPair(tokenInstance.address, longVarianceTokenInstance.address);
   pair0 = pair0.receipt.logs[0].args.pair;
   pair1 = await factoryInstance.createPair(shortVarianceTokenInstance.address, longVarianceTokenInstance.address);

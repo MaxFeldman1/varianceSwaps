@@ -1,7 +1,7 @@
 pragma solidity >=0.6.0;
 import "./SafeMath.sol";
 import "./SignedSafeMath.sol";
-import "./oracle.sol";
+import "./oracle/interfaces/IOracleContainer.sol";
 import "./BigMath.sol";
 import "./Ownable.sol";
 import "./destructable.sol";
@@ -15,7 +15,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	string public phrase;
 
 	address public payoutAssetAddress;
-	address public oracleAddress;
+	address public oracleContainerAddress;
 	address public bigMathAddress;
 
 	address public longVarianceTokenAddress;
@@ -74,12 +74,12 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 
 	constructor (string memory _phrase, address _payoutAssetAddress,
-		address _oracleAddress, address _bigMathAddress, uint _startTimestamp,
+		address _oracleContainerAddress, address _bigMathAddress, uint _startTimestamp,
 		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1,
 		uint _cap) public {
 		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
-		oracleAddress = _oracleAddress;
+		oracleContainerAddress = _oracleContainerAddress;
 		bigMathAddress = _bigMathAddress;
 		startTimestamp = _startTimestamp;
 		lengthOfPriceSeries = _lengthOfPriceSeries;
@@ -115,10 +115,10 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	function getFirstPrice() public {
 		uint _startTimestamp = startTimestamp;
 		require(_startTimestamp < block.timestamp && previousPrice == 0);
-		int _previousPrice = int(oracle(oracleAddress).fetchSpotAtTime(_startTimestamp));
+		(uint _previousPrice, ) = IOracleContainer(oracleContainerAddress).phraseToHistoricalPrice(phrase, _startTimestamp);
 		//prevent div by 0;
 		if (_previousPrice == 0) _previousPrice++;
-		previousPrice = _previousPrice;
+		previousPrice = int(_previousPrice);
 	}
 
 	/*
@@ -128,7 +128,11 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		intervalsCalculated++;
 		uint getAt = startTimestamp.add(uint(intervalsCalculated).mul(1 days));
 		require(getAt < block.timestamp && previousPrice != 0 && !ready);
-		int price = int(oracle(oracleAddress).fetchSpotAtTime(getAt));
+		int price;
+		{
+			(uint _price, ) = IOracleContainer(oracleContainerAddress).phraseToHistoricalPrice(phrase, getAt);
+			price = int(_price);
+		}
 		/*
 			this will likely never be a problem
 			however if it is prevent div by 0

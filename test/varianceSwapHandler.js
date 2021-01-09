@@ -4,6 +4,9 @@ const oracle = artifacts.require("oracle");
 const varianceSwapHandler = artifacts.require("varianceSwapHandler");
 const longVarianceToken = artifacts.require("longVarianceToken");
 const shortVarianceToken = artifacts.require("shortVarianceToken");
+const oracleContainer = artifacts.require("OracleContainer");
+const baseAggregator = artifacts.require("dummyAggregator");
+const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 
 const BN = web3.utils.BN;
 
@@ -52,14 +55,17 @@ contract('varance swap handler', function(accounts){
 	it('before each', async () => {
 		phrase = "FDMX/WBTC";
 
+		baseAggregatorInstance = await baseAggregator.new(3);
+		aggregatorFacadeInstance = await aggregatorFacade.new(baseAggregatorInstance.address, phrase);
+		oracleContainerInstance = await oracleContainer.new();
+
+		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
+		await oracleContainerInstance.deploy(phrase);
+
 		tokenInstance = await token.new();
 		asset1 = await token.new();
 		asset2 = await token.new();
 		bigMathInstance = await bigMath.new();
-		oracleInstance = await oracle.new(asset1.address, asset2.address);
-
-		asset1SubUnits = await oracleInstance.underlyingAssetSubUnits();
-		asset2SubUnits = await oracleInstance.strikeAssetSubUnits();
 
 		secondsPerDay = 86400;
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
@@ -67,12 +73,12 @@ contract('varance swap handler', function(accounts){
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString() + "000";
 		cap = payoutAtVarianceOf1.substring(0, payoutAtVarianceOf1.length-4);
 		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
-			oracleInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+			oracleContainerInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);
 		assert.equal(await varianceSwapHandlerInstance.payoutAssetAddress(), tokenInstance.address, "correct payout asset address");
-		assert.equal(await varianceSwapHandlerInstance.oracleAddress(), oracleInstance.address, "correct oracle address");
+		assert.equal(await varianceSwapHandlerInstance.oracleContainerAddress(), oracleContainerInstance.address, "correct oracle address");
 		assert.equal(await varianceSwapHandlerInstance.bigMathAddress(), bigMathInstance.address, "correct big math address");
 		assert.equal((await varianceSwapHandlerInstance.startTimestamp()).toString(), startTimestamp, "correct start timestamp");
 		assert.equal((await varianceSwapHandlerInstance.lengthOfPriceSeries()).toString(), lengthOfPriceSeries, "correct amount of price snapshots");
@@ -87,9 +93,7 @@ contract('varance swap handler', function(accounts){
 	});
 
 	async function setPrice(spot) {
-		//oracle gets median of last 3 spots set, so to change median we must set spot twice
-		await oracleInstance.set(spot);
-		return oracleInstance.set(spot);
+		return baseAggregatorInstance.addRound(spot);
 	}
 
 	function getRealizedVariance(priceSeries) {
@@ -126,6 +130,7 @@ contract('varance swap handler', function(accounts){
 			await helper.advanceTime(secondsPerDay);
 			assert.equal(await varianceSwapHandlerInstance.ready(), false, "not ready yet");
 			rec = await varianceSwapHandlerInstance.fetchFromOracle();
+			assert.equal((await varianceSwapHandlerInstance.previousPrice()).toString(), priceSeries[i].toString(), "correct value of previousPrice");
 		}
 		assert.equal(await varianceSwapHandlerInstance.ready(), true, "ready for claiming");
 		realizedVariance = await varianceSwapHandlerInstance.nonCappedPayout();

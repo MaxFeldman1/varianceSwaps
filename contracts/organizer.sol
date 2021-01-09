@@ -2,12 +2,12 @@ pragma solidity >=0.6.0 <0.7.0;
 import "./varianceSwapHandler.sol";
 import "./deployERC20Tokens.sol";
 import "./deployStakeHub.sol";
-import "./oracleTracker.sol";
+import "./oracle/interfaces/IOracleContainer.sol";
 
 contract organizer is Ownable {
 	address bigMathAddress;
 
-	oracleTracker oracleTrackerContract;
+	address public oracleContainerAddress;
 
 	address public tokenDeployerAddress;
 
@@ -25,13 +25,13 @@ contract organizer is Ownable {
 
 	constructor(
 		address _bigMathAddress,
-		address _oracleTrackerAddress,
+		address _oracleContainerAddress,
 		address _tokenDeployerAddress,
 		address _stakeHubDeployerAddress
 		) public {
 
 		bigMathAddress = _bigMathAddress;
-		oracleTrackerContract = oracleTracker(_oracleTrackerAddress);
+		oracleContainerAddress = _oracleContainerAddress;
 		tokenDeployerAddress = _tokenDeployerAddress;
 		stakeHubDeployerAddress = _stakeHubDeployerAddress;
 	}
@@ -44,11 +44,15 @@ contract organizer is Ownable {
 	function deployVarianceInstance(string memory _phrase, address _payoutAssetAddress,
 		uint _startTimestamp, uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1, uint _cap) public onlyOwner {
 
-		address _oracleAddress = oracleTrackerContract.oracles(_phrase);
-		require(_oracleAddress != address(0));
+		/*
+			fetch latest price from oracleContainer pass phrase
+			if there is no oracle for the asset pair with a description of _phrase this tx will revert
+		*/
+		address _oracleContainerAddress = oracleContainerAddress;	//gas savings
+		require(IOracleContainer(_oracleContainerAddress).OracleAddress(_phrase) != address(0));
 
 		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, 
-			_oracleAddress, bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
+			_oracleContainerAddress, bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
 
 		address _tokenDeployerAddress = tokenDeployerAddress;
 
