@@ -1,6 +1,5 @@
 const token = artifacts.require("Token");
 const bigMath = artifacts.require("BigMath");
-const oracle = artifacts.require("oracle");
 const varianceSwapHandler = artifacts.require("varianceSwapHandler");
 const longVarianceToken = artifacts.require("longVarianceToken");
 const shortVarianceToken = artifacts.require("shortVarianceToken");

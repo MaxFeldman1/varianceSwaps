@@ -1,6 +1,6 @@
 pragma solidity >=0.6.0;
 pragma experimental ABIEncoderV2;
-import "./Ownable.sol";
+import "../Ownable.sol";
 import "./Oracle.sol";
 import "./interfaces/IFeldmexOracle.sol";
 import "./interfaces/IOracleContainer.sol";
