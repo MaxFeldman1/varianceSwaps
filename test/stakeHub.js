@@ -10,6 +10,7 @@ const shortVarianceToken = artifacts.require("shortVarianceToken");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
 const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
+const lendingPool = artifacts.require("DummyLendingPool");
 
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
@@ -31,17 +32,16 @@ contract('stakeHub', function(accounts){
 		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
 		await oracleContainerInstance.deploy(phrase);
 
+		lendingPoolInstance = await lendingPool.new();
 		tokenInstance = await token.new();
-		tkn1 = await token.new();
-		tkn2 = await token.new();
 		bigMathInstance = await bigMath.new();
 
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
 		lengthOfPriceSeries = "10";
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
 		cap = payoutAtVarianceOf1+"0";
-		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
-			oracleContainerInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address, oracleContainerInstance.address,
+			bigMathInstance.address, lendingPoolInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);
@@ -72,11 +72,13 @@ contract('stakeHub', function(accounts){
 		pair1 = await uniswapPair.at(pair1);
 		pair2 = await uniswapPair.at(pair2);
 
+		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, (new BN(10)).pow(new BN(27)).toString());
+
 		//variance tokens
 		//we use cap+"0" to mint 10 variance tokens
 		await tokenInstance.approve(varianceSwapHandlerInstance.address, cap+"0000");
 		varianceTokenSubUnits = (new BN(10)).pow(await varianceSwapHandlerInstance.decimals());
-		await varianceSwapHandlerInstance.mintVariance(accounts[0], (new BN(10000)).mul(varianceTokenSubUnits).toString(), true);
+		await varianceSwapHandlerInstance.mintVariance(accounts[0], (new BN(10000)).mul(varianceTokenSubUnits).toString());
 
 		//mint liquidity tokens
 		await tokenInstance.transfer(pair0.address, cap);

@@ -42,7 +42,8 @@ contract('organizer', async function(accounts){
 		longShotDeployerInstance = await deployERC20Tokens.new();
 		stakeHubDeployerInstance = await deployStakeHub.new();
 
-		organizerInstance = await organizer.new(bigMathInstance.address, oracleContainerInstance.address, longShotDeployerInstance.address, stakeHubDeployerInstance.address);
+		organizerInstance = await organizer.new(bigMathInstance.address, oracleContainerInstance.address,
+			longShotDeployerInstance.address, stakeHubDeployerInstance.address, defaultAddress);
 	});
 
 	it('deploys variance swap handlers', async () => {

@@ -1,11 +1,12 @@
 pragma solidity >=0.6.0;
+import "./oracle/interfaces/IOracleContainer.sol";
 import "./SafeMath.sol";
 import "./SignedSafeMath.sol";
-import "./oracle/interfaces/IOracleContainer.sol";
 import "./BigMath.sol";
 import "./Ownable.sol";
 import "./destructable.sol";
 import "./IERC20.sol";
+import "./dummy/interfaces/DummyILendingPool.sol";
 
 contract varianceSwapHandler is bigMathStorage, Ownable {
 
@@ -20,6 +21,8 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	address public longVarianceTokenAddress;
 	address public shortVarianceTokenAddress;
+
+	address public lendingPoolAddress;
 
 	address payable public sendFeeTo;
 
@@ -38,16 +41,11 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	int public previousPrice;
 	int public cumulativeDailyReturns;
 
-	uint public payoutAssetReserves;
-
 	//percentage of funds sent to mint that are to be burned denominated in basis points
 	uint8 public fee;
-	uint public feeAdjustedCap;
 
 	uint8 public decimals = 18;
 	uint public subUnits = 10**18;
-
-	//uint public subUnitsPayout;
 
 	mapping(address => uint) public balanceLong;
 	mapping(address => uint) public balanceShort;
@@ -74,17 +72,18 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 
 	constructor (string memory _phrase, address _payoutAssetAddress,
-		address _oracleContainerAddress, address _bigMathAddress, uint _startTimestamp,
+		address _oracleContainerAddress, address _bigMathAddress,
+		address _lendingPoolAddress, uint _startTimestamp,
 		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1,
 		uint _cap) public {
 		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
 		oracleContainerAddress = _oracleContainerAddress;
 		bigMathAddress = _bigMathAddress;
+		lendingPoolAddress = _lendingPoolAddress;
 		startTimestamp = _startTimestamp;
 		lengthOfPriceSeries = _lengthOfPriceSeries;
 		cap = _cap;
-		feeAdjustedCap = _cap;
 		payoutAtVarianceOf1 = _payoutAtVarianceOf1;
 		seriesTermInflator = 10**36;
 		//subUnitsPayout = uint(10)**(IERC20(_payoutAssetAddress).decimals());
@@ -160,40 +159,33 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		}
 	}
 
-	function mintVariance(address _to, uint _amount, bool _transfer) public {
+	function mintVariance(address _to, uint _amount) public {
 		IERC20 pa = IERC20(payoutAssetAddress);
-		uint _feeAdjustedCap = feeAdjustedCap;
-		uint _subUnits = subUnits;
-		uint _payoutAssetReserves = payoutAssetReserves;
-		if (_transfer) {
-			uint transferAmount = _amount.mul(_feeAdjustedCap);
-			transferAmount = transferAmount.div(_subUnits).add(transferAmount%_subUnits==0 ? 0 : 1);
-			pa.transferFrom(msg.sender, address(this), transferAmount);
-		}
-		uint newReserves = pa.balanceOf(address(this)).sub(_payoutAssetReserves);
-		//requiredNewReserves == amount*_feeAdjCap/subUnitsVarSwaps
-		//maxAmount == newReserves*_subUnitsVarSwaps/_feeAdjCap
-		uint maxAmt = newReserves.mul(_subUnits).div(_feeAdjustedCap);
-		require(maxAmt >= _amount, "you attempted to mint too many swaps on too little collateral");
-		uint _fee = _amount.mul(_feeAdjustedCap).sub(_amount.mul(cap)).div(_subUnits);
+		uint _fee = _amount.mul(fee).div(10000);
+		_amount = _amount.sub(_fee);
+
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(address(pa));
+		uint toMint = _amount.mul(1e27*subUnits).div(cap).div(normalizedIncome);
+
+		require(toMint > 0);
+		pa.transferFrom(msg.sender, address(this), _amount+_fee);
 		pa.transfer(sendFeeTo, _fee);
-		payoutAssetReserves = newReserves.sub(_fee).add(_payoutAssetReserves);
-		balanceLong[_to] = maxAmt.add(balanceLong[_to]);
-		balanceShort[_to] = maxAmt.add(balanceShort[_to]);
-		totalSupplyLong = maxAmt.add(totalSupplyLong);
-		totalSupplyShort = maxAmt.add(totalSupplyShort);
-		emit Mint(_to, maxAmt);
+		balanceLong[_to] = toMint.add(balanceLong[_to]);
+		balanceShort[_to] = toMint.add(balanceShort[_to]);
+		totalSupplyLong = toMint.add(totalSupplyLong);
+		totalSupplyShort = toMint.add(totalSupplyShort);
+		emit Mint(_to, toMint);
 	}
 
 	function burnVariance(uint _amount, address _to) public {
 		require(balanceLong[msg.sender] >= _amount && balanceShort[msg.sender] >= _amount);
-		balanceLong[msg.sender] = balanceLong[msg.sender].sub(_amount);
-		balanceShort[msg.sender] = balanceShort[msg.sender].sub(_amount);
-		uint transferAmount = cap.mul(_amount).div(subUnits);
-		payoutAssetReserves = payoutAssetReserves.sub(transferAmount);
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(payoutAssetAddress);
+		uint transferAmount = cap.mul(_amount).mul(normalizedIncome).div(subUnits*1e27);
 		IERC20(payoutAssetAddress).transfer(_to, transferAmount);
 		totalSupplyLong = totalSupplyLong.sub(_amount);
 		totalSupplyShort = totalSupplyShort.sub(_amount);
+		balanceLong[msg.sender] = balanceLong[msg.sender].sub(_amount);
+		balanceShort[msg.sender] = balanceShort[msg.sender].sub(_amount);
 		emit Burn(msg.sender, _amount);
 	}
 
@@ -203,12 +195,12 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _payout = payout;
 		uint amountLong = balanceLong[msg.sender];
 		uint amountShort = balanceShort[msg.sender];
-		uint transferAmount = amountLong.mul(_payout).add(amountShort.mul(_cap.sub(_payout))).div(subUnits);
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(payoutAssetAddress);
+		uint transferAmount = amountLong.mul(_payout).add(amountShort.mul(_cap.sub(_payout))).mul(normalizedIncome).div(subUnits*1e27);
 		balanceLong[msg.sender] = 0;
 		balanceShort[msg.sender] = 0;
 		totalSupplyLong = totalSupplyLong.sub(amountLong);
 		totalSupplyShort = totalSupplyShort.sub(amountShort);
-		payoutAssetReserves = payoutAssetReserves.sub(transferAmount);
 		IERC20(payoutAssetAddress).transfer(_to, transferAmount);
 		emit Claim(msg.sender, amountLong, amountShort);
 	}
@@ -224,16 +216,14 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	}
 
 	function setFee(uint8 _fee) public onlyOwner {
-		fee = _fee;
 		//fee is denominated in basis points, 1 basis point is 1/10000
-		feeAdjustedCap = cap.mul(uint(_fee).add(10000)).div(10000);
+		fee = _fee;
 	}
 
 	function destruct(address payable _to) public onlyOwner {
 		//can only be called 10 days after variance swaps have matured
 		require(block.timestamp > startTimestamp+(lengthOfPriceSeries+1)*(1 days));
 		IERC20 payoutAssetContract = IERC20(payoutAssetAddress);
-		//there is a possibility that the amount of tokens owned by the contract is greater than payoutAssetReserves variable may imply
 		uint tokenBalance = payoutAssetContract.balanceOf(address(this));
 		payoutAssetContract.transfer(_to, tokenBalance);
 		destructable(longVarianceTokenAddress).destruct(_to);

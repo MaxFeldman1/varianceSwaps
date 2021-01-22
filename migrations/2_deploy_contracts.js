@@ -12,6 +12,7 @@ const deployStakeHub = artifacts.require("deployStakeHub");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
 const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
+const lendingPool = artifacts.require("DummyLendingPool");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
@@ -20,6 +21,8 @@ module.exports = async function(deployer) {
 
   tokenInstance = await deployer.deploy(token);
   tokenInstance = await deployer.deploy(token);
+
+  lendingPoolInstance = await deployer.deploy(lendingPool);
 
   factoryInstance = await deployer.deploy(factory, defaultAddress);
   routerInstance = await deployer.deploy(router, factoryInstance.address,
@@ -44,8 +47,8 @@ module.exports = async function(deployer) {
   payoutAtVariance1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
   cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
 
-  organizerInstance = await deployer.deploy(organizer, bigMathInstance.address,
-    oracleContainerInstance.address, tokenDeployerInstance.address, stakeHubDeployerInstance.address);
+  organizerInstance = await deployer.deploy(organizer, bigMathInstance.address, oracleContainerInstance.address,
+    tokenDeployerInstance.address, stakeHubDeployerInstance.address, lendingPoolInstance.address);
   await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
     "3000000000", "90", payoutAtVariance1, cap);
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));

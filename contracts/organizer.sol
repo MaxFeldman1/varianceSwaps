@@ -13,6 +13,8 @@ contract organizer is Ownable {
 
 	address public stakeHubDeployerAddress;
 
+	address public lendingPoolAddress;
+
 	address[] public varianceSwapInstances;
 
 	event DeployStakeHub(
@@ -27,13 +29,15 @@ contract organizer is Ownable {
 		address _bigMathAddress,
 		address _oracleContainerAddress,
 		address _tokenDeployerAddress,
-		address _stakeHubDeployerAddress
+		address _stakeHubDeployerAddress,
+		address _lendingPoolAddress
 		) public {
 
 		bigMathAddress = _bigMathAddress;
 		oracleContainerAddress = _oracleContainerAddress;
 		tokenDeployerAddress = _tokenDeployerAddress;
 		stakeHubDeployerAddress = _stakeHubDeployerAddress;
+		lendingPoolAddress = _lendingPoolAddress;
 	}
 
 	function varianceSwapInstancesLength() public view returns(uint) {
@@ -51,8 +55,8 @@ contract organizer is Ownable {
 		address _oracleContainerAddress = oracleContainerAddress;	//gas savings
 		require(IOracleContainer(_oracleContainerAddress).OracleAddress(_phrase) != address(0));
 
-		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, 
-			_oracleContainerAddress, bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
+		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, _oracleContainerAddress,
+			bigMathAddress, lendingPoolAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
 
 		address _tokenDeployerAddress = tokenDeployerAddress;
 

@@ -1,4 +1,4 @@
-const token = artifacts.require("Token");
+const token = artifacts.require("DummyAToken");
 const bigMath = artifacts.require("BigMath");
 const varianceSwapHandler = artifacts.require("varianceSwapHandler");
 const longVarianceToken = artifacts.require("longVarianceToken");
@@ -6,6 +6,7 @@ const shortVarianceToken = artifacts.require("shortVarianceToken");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
 const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
+const lendingPool = artifacts.require("DummyLendingPool");
 
 const BN = web3.utils.BN;
 
@@ -62,17 +63,17 @@ contract('varance swap handler', function(accounts){
 		await oracleContainerInstance.deploy(phrase);
 
 		tokenInstance = await token.new();
-		asset1 = await token.new();
-		asset2 = await token.new();
 		bigMathInstance = await bigMath.new();
+		lendingPoolInstance = await lendingPool.new();
 
 		secondsPerDay = 86400;
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
 		lengthOfPriceSeries = "10";
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString() + "000";
 		cap = payoutAtVarianceOf1.substring(0, payoutAtVarianceOf1.length-4);
-		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address,
-			oracleContainerInstance.address, bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+		cap = new BN(cap);
+		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address, oracleContainerInstance.address,
+			bigMathInstance.address, lendingPoolInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);
@@ -82,13 +83,17 @@ contract('varance swap handler', function(accounts){
 		assert.equal((await varianceSwapHandlerInstance.startTimestamp()).toString(), startTimestamp, "correct start timestamp");
 		assert.equal((await varianceSwapHandlerInstance.lengthOfPriceSeries()).toString(), lengthOfPriceSeries, "correct amount of price snapshots");
 		assert.equal((await varianceSwapHandlerInstance.payoutAtVarianceOf1()).toString(), payoutAtVarianceOf1, "correct payout at variance of 1");
-		assert.equal((await varianceSwapHandlerInstance.cap()).toString(), cap, "correct maximum payout");
+		assert.equal((await varianceSwapHandlerInstance.cap()).toString(), cap.toString(), "correct maximum payout");
 		assert.equal(await varianceSwapHandlerInstance.longVarianceTokenAddress(), longVarianceTokenInstance.address, "correct long variance token address" );
 		assert.equal(await varianceSwapHandlerInstance.shortVarianceTokenAddress(), shortVarianceTokenInstance.address, "correct short variance token address" );
 		varianceTokenDecimals = await varianceSwapHandlerInstance.decimals();
 		varianceTokenSubUnits = (new BN(10)).pow(varianceTokenDecimals);
 		assert.equal((await longVarianceTokenInstance.decimals()).toString(), varianceTokenDecimals.toString(), "same amount of decimals in variance token handler and in long variance token contract");
 		assert.equal((await shortVarianceTokenInstance.decimals()).toString(), varianceTokenDecimals.toString(), "same amount of decimals in variance token handler and in short variance token contract");
+		_10to27BN = (new BN(10)).pow(new BN(27));
+		normalizedIncome = _10to27BN;
+		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(20)));
+		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, normalizedIncome.toString());
 	});
 
 	async function setPrice(spot) {
@@ -122,7 +127,6 @@ contract('varance swap handler', function(accounts){
 		await setPrice(priceSeries[0]);
 		//go beyound the start timestamp and before the end of the first interval
 		await helper.advanceTime(parseInt(startTimestamp) - timestamp + 5);
-		//assert.equal((await oracleInstance.fetchSpotAtTime(startTimestamp, asset1.address)).toNumber(), priceSeries[0], "first price set successfully");
 		await varianceSwapHandlerInstance.getFirstPrice();
 		for (let i = 1; i < priceSeries.length; i++) {
 			await setPrice(priceSeries[i]);
@@ -146,14 +150,14 @@ contract('varance swap handler', function(accounts){
 
 	it('mints variance swaps', async () => {
 		//we want to test what will happen if we don't use an amount that is exactly divisible by subUnits
-		amount = (new BN(100)).mul(varianceTokenSubUnits).add(new BN(11111));
-		requiredCollateral = amount.mul(new BN(cap)).div(varianceTokenSubUnits).add(new BN(amount.mod(varianceTokenSubUnits).cmp(new BN(0)) == 0? 0 : 1));
-		amountMinted = requiredCollateral.mul(varianceTokenSubUnits).div(new BN(cap));
+		amount = varianceTokenSubUnits.add(new BN(11111)).mul(new BN(2));
+		//requiredCollateral = amount.mul(new BN(cap)).div(varianceTokenSubUnits).add(new BN(amount.mod(varianceTokenSubUnits).cmp(new BN(0)) == 0? 0 : 1));
+		amountMinted = amount.mul((new BN(10)).pow(new BN(27+18))).div(normalizedIncome).div(cap);
 		let contractBalance = await tokenInstance.balanceOf(varianceSwapHandlerInstance.address);
-		await tokenInstance.transfer(varianceSwapHandlerInstance.address, requiredCollateral.sub(contractBalance).toString());
+		await tokenInstance.approve(varianceSwapHandlerInstance.address, amount.toString());
 		prevTotalSupplyLong = await varianceSwapHandlerInstance.totalSupplyLong();
 		prevTotalSupplyShort = await varianceSwapHandlerInstance.totalSupplyShort();
-		rec = await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString(), false);
+		rec = await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString());
 		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString(), amountMinted.toString(), "correct balance long variance");
 		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).toString(), amountMinted.toString(), "correct balance short variance");
 		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).toString(), prevTotalSupplyLong.add(amountMinted).toString(), "correct total supply long");
@@ -161,19 +165,24 @@ contract('varance swap handler', function(accounts){
 	});
 
 	it('burns variance swaps', async () => {
-		amount = (new BN(3)).mul(varianceTokenSubUnits).add(new BN(11111));
-		transferAmount = amount.mul(new BN(cap)).div(varianceTokenSubUnits);
+		normalizedIncome = normalizedIncome.mul(new BN(2));
+		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, normalizedIncome.toString());
+		await tokenInstance.mintTo(varianceSwapHandlerInstance.address, amount.toString());
+
+		toBurn = amountMinted.div(new BN(2));
+		await tokenInstance.approve(varianceSwapHandlerInstance.address, amount.toString());
+
 		prevBalanceLong = await varianceSwapHandlerInstance.balanceLong(accounts[0]);
 		prevBalanceShort = await varianceSwapHandlerInstance.balanceShort(accounts[0]);
 		prevTokenBalanceAccount1 = await tokenInstance.balanceOf(accounts[1]);
 		prevTotalSupplyLong = await varianceSwapHandlerInstance.totalSupplyLong();
 		prevTotalSupplyShort = await varianceSwapHandlerInstance.totalSupplyShort();
-		await varianceSwapHandlerInstance.burnVariance(amount.toString(), accounts[1]);
-		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString(), prevBalanceLong.sub(amount).toString(), "correct balance long variance");
-		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).toString(), prevBalanceShort.sub(amount).toString(), "correct balance short variance");
-		assert.equal((await tokenInstance.balanceOf(accounts[1])).sub(prevTokenBalanceAccount1).toString(), transferAmount.toString(), "correct amount of funds distributed");
-		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).toString(), prevTotalSupplyLong.sub(amount).toString(), "correct total supply long");
-		assert.equal((await varianceSwapHandlerInstance.totalSupplyShort()).toString(), prevTotalSupplyShort.sub(amount).toString(), "correct total supply short");
+		await varianceSwapHandlerInstance.burnVariance(toBurn.toString(), accounts[1]);
+		assert.equal((await tokenInstance.balanceOf(accounts[1])).sub(prevTokenBalanceAccount1).toString(), amount.toString(), "correct amount of funds distributed");
+		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString(), prevBalanceLong.sub(toBurn).toString(), "correct balance long variance");
+		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).toString(), prevBalanceShort.sub(toBurn).toString(), "correct balance short variance");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).toString(), prevTotalSupplyLong.sub(toBurn).toString(), "correct total supply long");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyShort()).toString(), prevTotalSupplyShort.sub(toBurn).toString(), "correct total supply short");
 	});
 
 	it('transfers long varaince', async () => {
@@ -244,10 +253,12 @@ contract('varance swap handler', function(accounts){
 		newBalanceToken0 = await tokenInstance.balanceOf(accounts[0]);
 		newBalanceToken1 = await tokenInstance.balanceOf(accounts[1]);
 		newBalanceToken2 = await tokenInstance.balanceOf(accounts[2]);
-		cap = new BN(cap);
-		assert.equal(newBalanceToken0.sub(balanceToken0).toString(), balanceLong0.mul(cappedPayout).add(balanceShort0.mul(cap.sub(cappedPayout))).div(varianceTokenSubUnits).toString(), "correct balance after claim account 0");
-		assert.equal(newBalanceToken1.sub(balanceToken1).toString(), balanceLong1.mul(cappedPayout).add(balanceShort1.mul(cap.sub(cappedPayout))).div(varianceTokenSubUnits).toString(), "correct balance after claim account 1");
-		assert.equal(newBalanceToken2.sub(balanceToken2).toString(), balanceLong2.mul(cappedPayout).add(balanceShort2.mul(cap.sub(cappedPayout))).div(varianceTokenSubUnits).toString(), "correct balance after claim account 2");
+		assert.equal(newBalanceToken0.sub(balanceToken0).toString(),
+			balanceLong0.mul(cappedPayout).add(balanceShort0.mul(cap.sub(cappedPayout))).mul(normalizedIncome).div(varianceTokenSubUnits).div(_10to27BN).toString(), "correct balance after claim account 0");
+		assert.equal(newBalanceToken1.sub(balanceToken1).toString(),
+			balanceLong1.mul(cappedPayout).add(balanceShort1.mul(cap.sub(cappedPayout))).mul(normalizedIncome).div(varianceTokenSubUnits).div(_10to27BN).toString(), "correct balance after claim account 1");
+		assert.equal(newBalanceToken2.sub(balanceToken2).toString(),
+			balanceLong2.mul(cappedPayout).add(balanceShort2.mul(cap.sub(cappedPayout))).mul(normalizedIncome).div(varianceTokenSubUnits).div(_10to27BN).toString(), "correct balance after claim account 2");
 	});
 
 
@@ -257,9 +268,7 @@ contract('varance swap handler', function(accounts){
 		fetchedFee = await varianceSwapHandlerInstance.fee();
 		assert.equal(fetchedFee.toString(), fee, "fee set correctly");
 		fee = fetchedFee;
-		feeAdjustedCap = await varianceSwapHandlerInstance.feeAdjustedCap();
 		_10000BasisPoints = new BN("10000");
-		assert.equal(feeAdjustedCap.toString(), cap.mul(_10000BasisPoints.add(fee)).div(_10000BasisPoints).toString(), "correct fee adjusted cap");
 	});
 
 	it('sets sendFeeTo', async () => {
@@ -268,35 +277,24 @@ contract('varance swap handler', function(accounts){
 		assert.equal(sendFeeTo, accounts[3], "sets sendEthAddress");
 	});
 
-	it('charges fee transfer:false', async () => {
-		amount = (new BN(200));
-		var transferAmount = amount.mul(feeAdjustedCap);
-		amount = amount.mul(varianceTokenSubUnits);
-		//newReserves == maxAmount*feeAdjustedCap/_subUnitsVarSwaps
-		//maxAmount == newReserves*_subUnitsVarSwaps/_feeAdjCap
-
-		await tokenInstance.transfer(varianceSwapHandlerInstance.address, transferAmount.toString());
-		var balanceVarSwaps = await longVarianceTokenInstance.balanceOf(accounts[0]);
-		var balancePayout = await tokenInstance.balanceOf(sendFeeTo);
-		await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString(), false);
-		var newBalanceVarSwaps = await longVarianceTokenInstance.balanceOf(accounts[0]);
-		var newBalancePayout = await tokenInstance.balanceOf(sendFeeTo);
-		assert.equal(newBalanceVarSwaps.sub(balanceVarSwaps).toString(), amount.toString(), "correct payout of variance tokens");
-		assert.equal(newBalancePayout.sub(balancePayout).toString(), amount.mul(cap).div(varianceTokenSubUnits).mul(fee).div(_10000BasisPoints).toString(), "correct payout of fee");
-	});
 
 	it('charges fee transfer:true', async () => {
-		amount = (new BN(300));
-		var transferAmount = amount.mul(feeAdjustedCap);
-		amount = amount.mul(varianceTokenSubUnits);
-		await tokenInstance.approve(varianceSwapHandlerInstance.address, transferAmount.toString());
-		var balanceVarSwaps = await longVarianceTokenInstance.balanceOf(accounts[0]);
-		var balancePayout = await tokenInstance.balanceOf(sendFeeTo);
-		await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString(), true);
-		var newBalanceVarSwaps = await longVarianceTokenInstance.balanceOf(accounts[0]);
-		var newBalancePayout = await tokenInstance.balanceOf(sendFeeTo);
-		assert.equal(newBalanceVarSwaps.sub(balanceVarSwaps).toString(), amount.toString(), "correct payout of variance tokens");
-		assert.equal(newBalancePayout.sub(balancePayout).toString(), amount.mul(cap).div(varianceTokenSubUnits).mul(fee).div(_10000BasisPoints).toString(), "correct payout of fee");
+		//we want to test what will happen if we don't use an amount that is exactly divisible by subUnits
+		amount = varianceTokenSubUnits.add(new BN(11111)).mul(new BN(2));
+		fee = amount.mul(fee).div(_10000BasisPoints);
+		//requiredCollateral = amount.mul(new BN(cap)).div(varianceTokenSubUnits).add(new BN(amount.mod(varianceTokenSubUnits).cmp(new BN(0)) == 0? 0 : 1));
+		amountMinted = amount.sub(fee).mul((new BN(10)).pow(new BN(27+18))).div(normalizedIncome).div(cap);
+		let prevSendFeeToBalance = await tokenInstance.balanceOf(sendFeeTo);
+		await tokenInstance.approve(varianceSwapHandlerInstance.address, amount.toString());
+		let prevBalanceLong = await varianceSwapHandlerInstance.balanceLong(accounts[0]);
+		let prevBalanceShort = await varianceSwapHandlerInstance.balanceShort(accounts[0]);
+		let prevTotalSupplyLong = await varianceSwapHandlerInstance.totalSupplyLong();
+		let prevTotalSupplyShort = await varianceSwapHandlerInstance.totalSupplyShort();
+		rec = await varianceSwapHandlerInstance.mintVariance(accounts[0], amount.toString());
+		assert.equal((await varianceSwapHandlerInstance.balanceLong(accounts[0])).sub(prevBalanceLong).toString(), amountMinted.toString(), "correct balance long variance");
+		assert.equal((await varianceSwapHandlerInstance.balanceShort(accounts[0])).sub(prevBalanceShort).toString(), amountMinted.toString(), "correct balance short variance");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyLong()).sub(prevTotalSupplyLong).toString(), amountMinted.toString(), "correct total supply long");
+		assert.equal((await varianceSwapHandlerInstance.totalSupplyShort()).sub(prevTotalSupplyShort).toString(), amountMinted.toString(), "correct total supply short");
 	});
 
 	it('self destructs', async () => {
