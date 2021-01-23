@@ -17,6 +17,10 @@ const lendingPool = artifacts.require("DummyLendingPool");
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
 
+const _feb12021 = "1612137600";
+
+const kovanETHUSDAggregatorFacadeAddr = "0x9326BFA02ADD2366b30bacB125260Af641031331";
+
 module.exports = async function(deployer) {
 
   tokenInstance = await deployer.deploy(token);
@@ -28,7 +32,7 @@ module.exports = async function(deployer) {
   routerInstance = await deployer.deploy(router, factoryInstance.address,
     /*This param does not impact functionality of this project*/defaultAddress);
 
-  phrase = "FDMX/WBTC";
+  phrase = "ETH/USD";
 
   baseAggregatorInstance = await baseAggregator.new(3);
   aggregatorFacadeInstance = await aggregatorFacade.new(baseAggregatorInstance.address, phrase);
@@ -50,7 +54,7 @@ module.exports = async function(deployer) {
   organizerInstance = await deployer.deploy(organizer, bigMathInstance.address, oracleContainerInstance.address,
     tokenDeployerInstance.address, stakeHubDeployerInstance.address, lendingPoolInstance.address);
   await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
-    "3000000000", "90", payoutAtVariance1, cap);
+    _feb12021, "30", payoutAtVariance1, cap);
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
   longVarianceTokenInstance = await longVarianceToken.at(await varianceSwapHandlerInstance.longVarianceTokenAddress());
   shortVarianceTokenInstance = await shortVarianceToken.at(await varianceSwapHandlerInstance.shortVarianceTokenAddress());
