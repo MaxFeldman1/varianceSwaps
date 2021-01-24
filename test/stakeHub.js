@@ -1,4 +1,4 @@
-const token = artifacts.require("Token");
+const token = artifacts.require("DummyAToken");
 const stakeHub = artifacts.require("stakeHub");
 const uniswapFactory = artifacts.require("UniswapV2Factory");
 const uniswapPair = artifacts.require("UniswapV2Pair");
@@ -14,6 +14,7 @@ const lendingPool = artifacts.require("DummyLendingPool");
 
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
+const underlyingAssetAddress = defaultAddress.substring(0, defaultAddress.length-1)+"9";
 const BN = web3.utils.BN;
 const secondsPerDay = 86400;
 const secondsPerDaySquared = secondsPerDay*secondsPerDay;
@@ -33,7 +34,8 @@ contract('stakeHub', function(accounts){
 		await oracleContainerInstance.deploy(phrase);
 
 		lendingPoolInstance = await lendingPool.new();
-		tokenInstance = await token.new();
+		tokenInstance = await token.new(underlyingAssetAddress);
+		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(23)).toString());
 		bigMathInstance = await bigMath.new();
 
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
@@ -72,7 +74,7 @@ contract('stakeHub', function(accounts){
 		pair1 = await uniswapPair.at(pair1);
 		pair2 = await uniswapPair.at(pair2);
 
-		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, (new BN(10)).pow(new BN(27)).toString());
+		await lendingPoolInstance.setReserveNormalizedIncome(underlyingAssetAddress, (new BN(10)).pow(new BN(27)).toString());
 
 		//variance tokens
 		//we use cap+"0" to mint 10 variance tokens

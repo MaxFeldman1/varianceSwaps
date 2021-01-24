@@ -7,6 +7,7 @@ import "./Ownable.sol";
 import "./destructable.sol";
 import "./IERC20.sol";
 import "./dummy/interfaces/DummyILendingPool.sol";
+import "./dummy/interfaces/IDummyAToken.sol";
 
 contract varianceSwapHandler is bigMathStorage, Ownable {
 
@@ -16,6 +17,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	string public phrase;
 
 	address public payoutAssetAddress;
+	address underlyingAssetAddress;
 	address public oracleContainerAddress;
 	address public bigMathAddress;
 
@@ -78,6 +80,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _cap) public {
 		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
+		underlyingAssetAddress = IDummyAToken(payoutAssetAddress).UNDERLYING_ASSET_ADDRESS();
 		oracleContainerAddress = _oracleContainerAddress;
 		bigMathAddress = _bigMathAddress;
 		lendingPoolAddress = _lendingPoolAddress;
@@ -164,7 +167,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _fee = _amount.mul(fee).div(10000);
 		_amount = _amount.sub(_fee);
 
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(address(pa));
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
 		uint toMint = _amount.mul(1e27*subUnits).div(cap).div(normalizedIncome);
 
 		require(toMint > 0);
@@ -179,7 +182,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	function burnVariance(uint _amount, address _to) public {
 		require(balanceLong[msg.sender] >= _amount && balanceShort[msg.sender] >= _amount);
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(payoutAssetAddress);
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
 		uint transferAmount = cap.mul(_amount).mul(normalizedIncome).div(subUnits*1e27);
 		IERC20(payoutAssetAddress).transfer(_to, transferAmount);
 		totalSupplyLong = totalSupplyLong.sub(_amount);
@@ -195,7 +198,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _payout = payout;
 		uint amountLong = balanceLong[msg.sender];
 		uint amountShort = balanceShort[msg.sender];
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(payoutAssetAddress);
+		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
 		uint transferAmount = amountLong.mul(_payout).add(amountShort.mul(_cap.sub(_payout))).mul(normalizedIncome).div(subUnits*1e27);
 		balanceLong[msg.sender] = 0;
 		balanceShort[msg.sender] = 0;

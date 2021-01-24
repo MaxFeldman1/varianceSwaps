@@ -8,6 +8,9 @@ const baseAggregator = artifacts.require("dummyAggregator");
 const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 const lendingPool = artifacts.require("DummyLendingPool");
 
+const defaultAddress = "0x0000000000000000000000000000000000000000";
+const underlyingAssetAddress = defaultAddress.substring(0, defaultAddress.length-1)+"9";
+
 const BN = web3.utils.BN;
 
 const helper = require("../helper/helper.js");
@@ -62,7 +65,7 @@ contract('varance swap handler', function(accounts){
 		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
 		await oracleContainerInstance.deploy(phrase);
 
-		tokenInstance = await token.new();
+		tokenInstance = await token.new(underlyingAssetAddress);
 		bigMathInstance = await bigMath.new();
 		lendingPoolInstance = await lendingPool.new();
 
@@ -93,7 +96,7 @@ contract('varance swap handler', function(accounts){
 		_10to27BN = (new BN(10)).pow(new BN(27));
 		normalizedIncome = _10to27BN;
 		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(20)));
-		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, normalizedIncome.toString());
+		await lendingPoolInstance.setReserveNormalizedIncome(underlyingAssetAddress, normalizedIncome.toString());
 	});
 
 	async function setPrice(spot) {
@@ -166,7 +169,7 @@ contract('varance swap handler', function(accounts){
 
 	it('burns variance swaps', async () => {
 		normalizedIncome = normalizedIncome.mul(new BN(2));
-		await lendingPoolInstance.setReserveNormalizedIncome(tokenInstance.address, normalizedIncome.toString());
+		await lendingPoolInstance.setReserveNormalizedIncome(underlyingAssetAddress, normalizedIncome.toString());
 		await tokenInstance.mintTo(varianceSwapHandlerInstance.address, amount.toString());
 
 		toBurn = amountMinted.div(new BN(2));

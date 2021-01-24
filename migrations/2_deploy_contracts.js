@@ -1,4 +1,5 @@
 const token = artifacts.require("Token");
+const AToken = artifacts.require("DummyAToken");
 const bigMath = artifacts.require("BigMath");
 const factory = artifacts.require("UniswapV2Factory");
 const router = artifacts.require("UniswapV2Router02");
@@ -23,8 +24,10 @@ const kovanETHUSDAggregatorFacadeAddr = "0x9326BFA02ADD2366b30bacB125260Af641031
 
 module.exports = async function(deployer) {
 
-  tokenInstance = await deployer.deploy(token);
-  tokenInstance = await deployer.deploy(token);
+  underlyingAssetInstance = await deployer.deploy(token);
+  underlyingAssetInstance = await deployer.deploy(token);
+
+  tokenInstance = await deployer.deploy(AToken, underlyingAssetInstance.address);
 
   lendingPoolInstance = await deployer.deploy(lendingPool);
 

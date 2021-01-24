@@ -1,4 +1,4 @@
-const token = artifacts.require("Token");
+const token = artifacts.require("DummyAToken");
 const bigMath = artifacts.require("BigMath");
 const varianceSwapHandler = artifacts.require("varianceSwapHandler");
 const longVarianceToken = artifacts.require("longVarianceToken");
@@ -12,15 +12,15 @@ const deployStakeHub = artifacts.require("deployStakeHub");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
 const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
+const lendingPool = artifacts.require("DummyLendingPool");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
+const underlyingAssetAddress = defaultAddress.substring(0, defaultAddress.length-1)+"9";
 const BN = web3.utils.BN;
 
 contract('organizer', async function(accounts){
 	it('before each', async () => {
-		tokenInstance = await token.new();
-		asset1 = await token.new();
-		asset2 = await token.new();
+		tokenInstance = await token.new(underlyingAssetAddress);
 
 		phrase = "FDMX/WBTC";
 
@@ -42,8 +42,15 @@ contract('organizer', async function(accounts){
 		longShotDeployerInstance = await deployERC20Tokens.new();
 		stakeHubDeployerInstance = await deployStakeHub.new();
 
+		lendingPoolInstance = await lendingPool.new();
+
 		organizerInstance = await organizer.new(bigMathInstance.address, oracleContainerInstance.address,
-			longShotDeployerInstance.address, stakeHubDeployerInstance.address, defaultAddress);
+			longShotDeployerInstance.address, stakeHubDeployerInstance.address, lendingPoolInstance.address);
+
+		_10to27BN = (new BN(10)).pow(new BN(27));
+		normalizedIncome = _10to27BN;
+		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(20)));
+		await lendingPoolInstance.setReserveNormalizedIncome(underlyingAssetAddress, normalizedIncome.toString());
 	});
 
 	it('deploys variance swap handlers', async () => {
