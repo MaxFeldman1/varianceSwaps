@@ -34,7 +34,7 @@ contract('stakeHub', function(accounts){
 		await oracleContainerInstance.deploy(phrase);
 
 		lendingPoolInstance = await lendingPool.new();
-		tokenInstance = await token.new(underlyingAssetAddress);
+		tokenInstance = await token.new(underlyingAssetAddress, lendingPoolInstance.address);
 		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(23)).toString());
 		bigMathInstance = await bigMath.new();
 
@@ -43,7 +43,7 @@ contract('stakeHub', function(accounts){
 		payoutAtVarianceOf1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
 		cap = payoutAtVarianceOf1+"0";
 		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address, oracleContainerInstance.address,
-			bigMathInstance.address, lendingPoolInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+			bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);

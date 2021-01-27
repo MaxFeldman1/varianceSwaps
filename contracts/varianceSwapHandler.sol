@@ -6,7 +6,7 @@ import "./BigMath.sol";
 import "./Ownable.sol";
 import "./destructable.sol";
 import "./IERC20.sol";
-import "./dummy/interfaces/DummyILendingPool.sol";
+import "./dummy/interfaces/IDummyLendingPool.sol";
 import "./dummy/interfaces/IDummyAToken.sol";
 
 contract varianceSwapHandler is bigMathStorage, Ownable {
@@ -24,7 +24,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	address public longVarianceTokenAddress;
 	address public shortVarianceTokenAddress;
 
-	address public lendingPoolAddress;
+	ILendingPool pool;
 
 	address payable public sendFeeTo;
 
@@ -73,17 +73,23 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 	);
 
 
-	constructor (string memory _phrase, address _payoutAssetAddress,
-		address _oracleContainerAddress, address _bigMathAddress,
-		address _lendingPoolAddress, uint _startTimestamp,
-		uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1,
-		uint _cap) public {
+	constructor (
+		string memory _phrase,
+		address _payoutAssetAddress,
+		address _oracleContainerAddress,
+		address _bigMathAddress,
+		uint _startTimestamp,
+		uint16 _lengthOfPriceSeries,
+		uint _payoutAtVarianceOf1,
+		uint _cap
+		) public {
+
 		phrase = _phrase;
 		payoutAssetAddress = _payoutAssetAddress;
 		underlyingAssetAddress = IDummyAToken(payoutAssetAddress).UNDERLYING_ASSET_ADDRESS();
 		oracleContainerAddress = _oracleContainerAddress;
 		bigMathAddress = _bigMathAddress;
-		lendingPoolAddress = _lendingPoolAddress;
+		pool = IDummyAToken(payoutAssetAddress).POOL();
 		startTimestamp = _startTimestamp;
 		lengthOfPriceSeries = _lengthOfPriceSeries;
 		cap = _cap;
@@ -167,7 +173,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _fee = _amount.mul(fee).div(10000);
 		_amount = _amount.sub(_fee);
 
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
+		uint normalizedIncome = pool.getReserveNormalizedIncome(underlyingAssetAddress);
 		uint toMint = _amount.mul(1e27*subUnits).div(cap).div(normalizedIncome);
 
 		require(toMint > 0);
@@ -182,7 +188,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	function burnVariance(uint _amount, address _to) public {
 		require(balanceLong[msg.sender] >= _amount && balanceShort[msg.sender] >= _amount);
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
+		uint normalizedIncome = pool.getReserveNormalizedIncome(underlyingAssetAddress);
 		uint transferAmount = cap.mul(_amount).mul(normalizedIncome).div(subUnits*1e27);
 		IERC20(payoutAssetAddress).transfer(_to, transferAmount);
 		totalSupplyLong = totalSupplyLong.sub(_amount);
@@ -198,7 +204,7 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		uint _payout = payout;
 		uint amountLong = balanceLong[msg.sender];
 		uint amountShort = balanceShort[msg.sender];
-		uint normalizedIncome = ILendingPool(lendingPoolAddress).getReserveNormalizedIncome(underlyingAssetAddress);
+		uint normalizedIncome = pool.getReserveNormalizedIncome(underlyingAssetAddress);
 		uint transferAmount = amountLong.mul(_payout).add(amountShort.mul(_cap.sub(_payout))).mul(normalizedIncome).div(subUnits*1e27);
 		balanceLong[msg.sender] = 0;
 		balanceShort[msg.sender] = 0;

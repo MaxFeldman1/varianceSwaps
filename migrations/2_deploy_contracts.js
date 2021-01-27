@@ -36,6 +36,7 @@ const kovanOrganizerAddr = "0x163Ea98618570Ed4ca50C3427e322300c2706e52";
 
 
 module.exports = async function(deployer) {
+  /*
   tokenInstance = await AToken.at(kovanAaveAUSDCAddr);
 
   lendingPoolInstance = await ILendingPool.at(kovanAaveLendingPoolAddr);

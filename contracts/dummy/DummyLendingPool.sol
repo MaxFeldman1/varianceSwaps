@@ -1,5 +1,5 @@
 pragma solidity >=0.6.0;
-import "./interfaces/DummyILendingPool.sol";
+import "./interfaces/IDummyLendingPool.sol";
 
 contract DummyLendingPool is ILendingPool {
 

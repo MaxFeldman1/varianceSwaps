@@ -65,9 +65,9 @@ contract('varance swap handler', function(accounts){
 		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
 		await oracleContainerInstance.deploy(phrase);
 
-		tokenInstance = await token.new(underlyingAssetAddress);
-		bigMathInstance = await bigMath.new();
 		lendingPoolInstance = await lendingPool.new();
+		tokenInstance = await token.new(underlyingAssetAddress, lendingPoolInstance.address);
+		bigMathInstance = await bigMath.new();
 
 		secondsPerDay = 86400;
 		startTimestamp = (await web3.eth.getBlock('latest')).timestamp + secondsPerDay;
@@ -76,7 +76,7 @@ contract('varance swap handler', function(accounts){
 		cap = payoutAtVarianceOf1.substring(0, payoutAtVarianceOf1.length-4);
 		cap = new BN(cap);
 		varianceSwapHandlerInstance = await varianceSwapHandler.new(phrase, tokenInstance.address, oracleContainerInstance.address,
-			bigMathInstance.address, lendingPoolInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+			bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);

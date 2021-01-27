@@ -20,7 +20,9 @@ const BN = web3.utils.BN;
 
 contract('organizer', async function(accounts){
 	it('before each', async () => {
-		tokenInstance = await token.new(underlyingAssetAddress);
+		lendingPoolInstance = await lendingPool.new();
+
+		tokenInstance = await token.new(underlyingAssetAddress, lendingPoolInstance.address);
 
 		phrase = "FDMX/WBTC";
 
@@ -42,10 +44,8 @@ contract('organizer', async function(accounts){
 		longShotDeployerInstance = await deployERC20Tokens.new();
 		stakeHubDeployerInstance = await deployStakeHub.new();
 
-		lendingPoolInstance = await lendingPool.new();
-
 		organizerInstance = await organizer.new(bigMathInstance.address, oracleContainerInstance.address,
-			longShotDeployerInstance.address, stakeHubDeployerInstance.address, lendingPoolInstance.address);
+			longShotDeployerInstance.address, stakeHubDeployerInstance.address);
 
 		_10to27BN = (new BN(10)).pow(new BN(27));
 		normalizedIncome = _10to27BN;
