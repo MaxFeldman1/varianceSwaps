@@ -120,7 +120,7 @@ contract('stakeHub', function(accounts){
 		var timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[0].toNumber(), 1, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[0].toNumber(), 1, "correct number of stakes");
 
 		//start stake with transfer:false
 		await asset0.transfer(stakeHubInstance.address, stakeAmt, {from: accounts[0]});
@@ -129,7 +129,7 @@ contract('stakeHub', function(accounts){
 		timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[0].toNumber(), 2, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[0].toNumber(), 2, "correct number of stakes");
 	});
 
 
@@ -142,7 +142,7 @@ contract('stakeHub', function(accounts){
 		var timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[1].toNumber(), 1, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[1].toNumber(), 1, "correct number of stakes");
 
 		//start stake with transfer:false
 		await asset1.transfer(stakeHubInstance.address, stakeAmt, {from: accounts[0]});
@@ -151,7 +151,7 @@ contract('stakeHub', function(accounts){
 		timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[1].toNumber(), 2, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[1].toNumber(), 2, "correct number of stakes");
 	});
 
 
@@ -164,7 +164,7 @@ contract('stakeHub', function(accounts){
 		var timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[2].toNumber(), 1, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[2].toNumber(), 1, "correct number of stakes");
 
 		//start stake with transfer:false
 		await asset2.transfer(stakeHubInstance.address, stakeAmt, {from: accounts[0]});
@@ -173,7 +173,7 @@ contract('stakeHub', function(accounts){
 		timestamp = (await web3.eth.getBlock(rec.receipt.blockNumber)).timestamp;
 		assert.equal(stake.timestamp.toNumber(), timestamp, "correct timestamp");
 		assert.equal(stake.amount.toNumber(), stakeAmt, "correct amount in stake");
-		assert.equal((await stakeHubInstance.getStats())[2].toNumber(), 2, "correct number of stakes");
+		assert.equal((await stakeHubInstance.getStats(accounts[0]))[2].toNumber(), 2, "correct number of stakes");
 	});
 
 
@@ -224,7 +224,7 @@ contract('stakeHub', function(accounts){
 
 	it('correct payout claiming all asset 0', async () => {
 		await helper.advanceTime(100);
-		var stakesLength = (await stakeHubInstance.getStats())[0].toNumber();
+		var stakesLength = (await stakeHubInstance.getStats(accounts[0]))[0].toNumber();
 		var stakes = [];
 		for (let i = 0; i < stakesLength; i++) stakes.push(await stakeHubInstance.stakes0(accounts[0], i));
 		var prevBalance0 = await asset0.balanceOf(accounts[0]);
@@ -245,7 +245,7 @@ contract('stakeHub', function(accounts){
 
 	it('correct payout claiming all asset 1', async () => {
 		await helper.advanceTime(100);
-		var stakesLength = (await stakeHubInstance.getStats())[1].toNumber();
+		var stakesLength = (await stakeHubInstance.getStats(accounts[0]))[1].toNumber();
 		var stakes = [];
 		for (let i = 0; i < stakesLength; i++) stakes.push(await stakeHubInstance.stakes1(accounts[0], i));
 		var prevBalance1 = await asset1.balanceOf(accounts[0]);
@@ -266,7 +266,7 @@ contract('stakeHub', function(accounts){
 
 	it('correct payout claiming all asset 2', async () => {
 		await helper.advanceTime(100);
-		var stakesLength = (await stakeHubInstance.getStats())[2].toNumber();
+		var stakesLength = (await stakeHubInstance.getStats(accounts[0]))[2].toNumber();
 		var stakes = [];
 		for (let i = 0; i < stakesLength; i++) stakes.push(await stakeHubInstance.stakes2(accounts[0], i));
 		var prevBalance2 = await asset2.balanceOf(accounts[0]);

@@ -1,3 +1,4 @@
 build/contracts/*
-!build/contracts/Uniswap*.json
+!build/contracts/BPool.json
+!build/contracts/BFactory.json
 node_modules/

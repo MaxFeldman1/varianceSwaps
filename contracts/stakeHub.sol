@@ -1,4 +1,5 @@
 pragma solidity >=0.6.0;
+pragma experimental ABIEncoderV2;
 import "./ERC20.sol";
 import "./IERC20.sol";
 import "./Ownable.sol";
@@ -77,10 +78,16 @@ constructor(address _payoutAssetAddress, address _stakeable0, address _stakeable
 		destructionTimestamp = _destructionTimestamp;
 	}
 
-	function getStats() public view returns (uint _lenStakes0, uint _lenStakes1, uint _lenStakes2) {
-		_lenStakes0 = stakes0[msg.sender].length;
-		_lenStakes1 = stakes1[msg.sender].length;
-		_lenStakes2 = stakes2[msg.sender].length;
+	function getStats(address _addr) public view returns (uint _lenStakes0, uint _lenStakes1, uint _lenStakes2) {
+		_lenStakes0 = stakes0[_addr].length;
+		_lenStakes1 = stakes1[_addr].length;
+		_lenStakes2 = stakes2[_addr].length;
+	}
+
+	function allStakes(address _addr) external view returns (stake[] memory _stakes0, stake[] memory _stakes1, stake[] memory _stakes2) {
+		_stakes0 = stakes0[_addr];
+		_stakes1 = stakes1[_addr];
+		_stakes2 = stakes2[_addr];
 	}
 
 	function startStake(uint8 _index, uint _amount, bool _transfer) public {
