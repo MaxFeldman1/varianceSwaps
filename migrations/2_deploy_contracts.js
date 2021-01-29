@@ -26,16 +26,15 @@ const kovanAaveAUSDCAddr = "0xe12AFeC5aa12Cf614678f9bFeeB98cA9Bb95b5B0";
 
 const kovanOracleContainerAddr = "0xA43617A5d4Ef97fF9D989e6788ca31304C54Cb1D";
 const kovanDeployERC20TokensAddr = "0x4B5f6dBE5f610B286AdA2a59b044b92944Cc00B7";
-const kovanDeployStakeHubAddr = "0x311b328542EA500F56993589A7E257c32a15dc90";
+const kovanDeployStakeHubAddr = "0x8877be10df2938676617A033C6C2B8299616D6bC";
 const kovanBigMathAddr = "0xA83D65bcc94762Eeee2a1433Da518bc6340ee1B4";
-const kovanOrganizerAddr = "0x6815a9e8c0C50d22a24d42D1D8e0f7F545007F52";
+const kovanOrganizerAddr = "0x5896429982b8D2b14126e9436E01a6A712B7Cc82";
 
-const kovanPool0 = "0xa7eaba3595513177a111d03fddb6b608618cce4e";
-const kovanPool1 = "0x5c2af3e5bc7b1e4441058167577c02f8c843af71";
-const kovanPool2 = "0xee47226a65a01724a87ed59142d57077d3336b7c";
+const kovanPool0 = "0x1ba323d5e83a2e5cbea5e5cf303c28afdfc5ba42";
+const kovanPool1 = "0x7545681a067342b0116732c7b7ffd89aac09080b";
+const kovanPool2 = "0xe06f37dc45670fce0d416c62c672828e361f7dde";
 
 module.exports = async function(deployer) {
-  /*
   accounts = await web3.eth.getAccounts();
 
   balance = await web3.eth.getBalance(accounts[0]);
@@ -47,13 +46,6 @@ module.exports = async function(deployer) {
   phrase = "ETH / USD";
 
   aggregatorFacadeInstance = await aggregatorFacade.at(kovanETHUSDAggregatorFacadeAddr);
-
-  fetchedPhrase = await aggregatorFacadeInstance.description();
-
-  if (phrase !== fetchedPhrase) {
-    console.log(phrase, fetchedPhrase, "OOF");
-    process.exit();
-  }
 
   //oracleContainerInstance = await deployer.deploy(oracleContainer);
   oracleContainerInstance = await oracleContainer.at(kovanOracleContainerAddr);
@@ -70,7 +62,7 @@ module.exports = async function(deployer) {
   //bigMathInstance = await deployer.deploy(bigMath);
   bigMathInstance = await bigMath.at(kovanBigMathAddr);
   payoutAtVariance1 = (new BN(10)).pow(await tokenInstance.decimals()).toString();
-  cap = payoutAtVariance1.substring(0, payoutAtVariance1.length-1);
+  cap = payoutAtVariance1;
 
   
   //organizerInstance = await deployer.deploy(organizer, bigMathInstance.address, oracleContainerInstance.address,
@@ -82,8 +74,6 @@ module.exports = async function(deployer) {
   //console.log('deployed variance');
 
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
-
-  stakeHubInstance = await stakeHub.at(await organizerInstance.varianceToStakeHub(varianceSwapHandlerInstance.address));
 
   lvtAddress = await varianceSwapHandlerInstance.longVarianceTokenAddress();
   svtAddress = await varianceSwapHandlerInstance.shortVarianceTokenAddress()
@@ -107,11 +97,10 @@ module.exports = async function(deployer) {
   pair2 = pair2.receipt.logs[0].args.pool;
 
   console.log('deployed pair 2');
-*/
+//*/
   pair0 = kovanPool0;
   pair1 = kovanPool1;
   pair2 = kovanPool2;
-
 
   /*
     deploy stake hub
@@ -121,38 +110,46 @@ module.exports = async function(deployer) {
   inflator2 = 2;
   //await organizerInstance.addStakeHub(0, pair0, pair1, pair2, inflator0, inflator1, inflator2);
 
+  //stakeHubInstance = await stakeHub.at(await organizerInstance.varianceToStakeHub(varianceSwapHandlerInstance.address));
+
   //console.log('stake hub deployed');
 
+  //console.log('finished prerequisites');
 
   /*
     approvals
   */
   toMint = "1000000000";
-  //await tokenInstance.approve(varianceSwapHandlerInstance.address, toMint);
-  //await tokenInstance.approve(pair0, toMint);
-  //await tokenInstance.approve(pair2, toMint);
+  //amtSwaps = (await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString();
+  await tokenInstance.approve(varianceSwapHandlerInstance.address, toMint);
+  await tokenInstance.approve(pair0, toMint);
+  await tokenInstance.approve(pair2, toMint);
 
-  //console.log('token approvals done');
+  console.log('approvals');
+/*
+  console.log('token approvals done');
 
-  //await lvtContract.approve(pair0, toMint);
-  //await lvtContract.approve(pair1, toMint);
+  await lvtContract.approve(pair0, amtSwaps);
+  await lvtContract.approve(pair1, amtSwaps);
 
-  //console.log('lvt approvals done');
+  console.log('lvt approvals done');
 
-  //await svtContract.approve(pair1, toMint);
-  //await svtContract.approve(pair2, toMint);
+  await svtContract.approve(pair1, amtSwaps);
+  await svtContract.approve(pair2, amtSwaps);
 
-  //console.log('svt approvals done');
+  console.log('svt approvals done');
   /*
     mint swaps
   */
-  //await varianceSwapHandlerInstance.mintVariance(accounts[0], toMint);
+  await varianceSwapHandlerInstance.mintVariance(accounts[0], toMint);
+  amtSwaps = (await varianceSwapHandlerInstance.balanceLong(accounts[0])).div(new BN(10)).toString();
 
+  console.log('we move');
   //console.log('minted variance tokens');
   /*
     setup pools
   */
-  /*
+  //*
   _50pctWeight = "5"+"0".repeat(18);
   pool0 = await pool.at(pair0);
   pool1 = await pool.at(pair1);
@@ -161,17 +158,17 @@ module.exports = async function(deployer) {
   console.log('got pool contracts');
 
   //await pool0.bind(tokenInstance.address, toMint, _50pctWeight);
-  //await pool0.bind(lvtAddress, toMint, _50pctWeight);
+  //await pool0.bind(lvtAddress, amtSwaps, _50pctWeight);
 
   console.log('pool0 binds done');
 
-  await pool1.bind(lvtAddress, toMint, _50pctWeight);
-  await pool1.bind(svtAddress, toMint, _50pctWeight);
+  await pool1.bind(lvtAddress, amtSwaps, _50pctWeight);
+  await pool1.bind(svtAddress, amtSwaps, _50pctWeight);
 
   console.log('pool1 binds done');
 
   await pool2.bind(tokenInstance.address, toMint, _50pctWeight);
-  await pool2.bind(svtAddress, toMint, _50pctWeight);
+  await pool2.bind(svtAddress, amtSwaps, _50pctWeight);
 
   console.log('pool2 binds done');
 
