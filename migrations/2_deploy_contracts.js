@@ -35,6 +35,7 @@ const kovanPool1 = "0x7545681a067342b0116732c7b7ffd89aac09080b";
 const kovanPool2 = "0xe06f37dc45670fce0d416c62c672828e361f7dde";
 
 module.exports = async function(deployer) {
+  /*
   accounts = await web3.eth.getAccounts();
 
   balance = await web3.eth.getBalance(accounts[0]);
@@ -97,14 +98,14 @@ module.exports = async function(deployer) {
   pair2 = pair2.receipt.logs[0].args.pool;
 
   console.log('deployed pair 2');
-//*/
+//*
   pair0 = kovanPool0;
   pair1 = kovanPool1;
   pair2 = kovanPool2;
 
   /*
     deploy stake hub
-  */
+  *//*
   inflator0 = 4;
   inflator1 = 3;
   inflator2 = 2;
@@ -118,7 +119,7 @@ module.exports = async function(deployer) {
 
   /*
     approvals
-  */
+  *//*
   toMint = "1000000000";
   //amtSwaps = (await varianceSwapHandlerInstance.balanceLong(accounts[0])).toString();
   await tokenInstance.approve(varianceSwapHandlerInstance.address, toMint);
@@ -140,7 +141,7 @@ module.exports = async function(deployer) {
   console.log('svt approvals done');
   /*
     mint swaps
-  */
+  *//*
   await varianceSwapHandlerInstance.mintVariance(accounts[0], toMint);
   amtSwaps = (await varianceSwapHandlerInstance.balanceLong(accounts[0])).div(new BN(10)).toString();
 
@@ -149,7 +150,7 @@ module.exports = async function(deployer) {
   /*
     setup pools
   */
-  //*
+  /*
   _50pctWeight = "5"+"0".repeat(18);
   pool0 = await pool.at(pair0);
   pool1 = await pool.at(pair1);

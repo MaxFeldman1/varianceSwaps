@@ -79,7 +79,14 @@ contract('varance swap handler', function(accounts){
 			bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
 		longVarianceTokenInstance = await longVarianceToken.new(varianceSwapHandlerInstance.address);
 		shortVarianceTokenInstance = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
+
+		varianceSwapHandlerInstance2 = await varianceSwapHandler.new(phrase, tokenInstance.address, oracleContainerInstance.address,
+			bigMathInstance.address, startTimestamp, lengthOfPriceSeries, payoutAtVarianceOf1, cap);
+		longVarianceTokenInstance2 = await longVarianceToken.new(varianceSwapHandlerInstance.address);
+		shortVarianceTokenInstance2 = await shortVarianceToken.new(varianceSwapHandlerInstance.address);
+
 		await varianceSwapHandlerInstance.setAddresses(longVarianceTokenInstance.address, shortVarianceTokenInstance.address);
+		await varianceSwapHandlerInstance2.setAddresses(longVarianceTokenInstance2.address, shortVarianceTokenInstance2.address);
 		assert.equal(await varianceSwapHandlerInstance.payoutAssetAddress(), tokenInstance.address, "correct payout asset address");
 		assert.equal(await varianceSwapHandlerInstance.oracleContainerAddress(), oracleContainerInstance.address, "correct oracle address");
 		assert.equal(await varianceSwapHandlerInstance.bigMathAddress(), bigMathInstance.address, "correct big math address");
@@ -124,20 +131,59 @@ contract('varance swap handler', function(accounts){
 		return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / (n-1));
 	}
 
-	it('gives correct payout', async () => {
+	it('gives correct payout, use fetchFromOracle()', async () => {
 		priceSeries = [100,90,120,350,50,120,130,131,131,134,132];
 		var timestamp = (await web3.eth.getBlock('latest')).timestamp;
 		await setPrice(priceSeries[0]);
 		//go beyound the start timestamp and before the end of the first interval
 		await helper.advanceTime(parseInt(startTimestamp) - timestamp + 5);
 		await varianceSwapHandlerInstance.getFirstPrice();
-		for (let i = 1; i < priceSeries.length; i++) {
+		await varianceSwapHandlerInstance2.getFirstPrice();
+		await setPrice(priceSeries[1]);
+		await helper.advanceTime(secondsPerDay);
+		await varianceSwapHandlerInstance2.fetchNFromOracle(2);
+		assert.equal(await varianceSwapHandlerInstance.ready(), false, "not ready yet");
+		rec = await varianceSwapHandlerInstance.fetchFromOracle();
+		assert.equal((await varianceSwapHandlerInstance.previousPrice()).toString(), priceSeries[1].toString(), "correct value of previousPrice");
+		for (let i = 2; i < priceSeries.length; i++) {
 			await setPrice(priceSeries[i]);
 			await helper.advanceTime(secondsPerDay);
 			assert.equal(await varianceSwapHandlerInstance.ready(), false, "not ready yet");
 			rec = await varianceSwapHandlerInstance.fetchFromOracle();
 			assert.equal((await varianceSwapHandlerInstance.previousPrice()).toString(), priceSeries[i].toString(), "correct value of previousPrice");
 		}
+		assert.equal(await varianceSwapHandlerInstance.ready(), true, "ready for claiming");
+		realizedVariance = await varianceSwapHandlerInstance.nonCappedPayout();
+		inflatedAverageVariance = getRealizedVariance(priceSeries);
+		var decimals = payoutAtVarianceOf1.length-1; //where(string == "1"_+stingMul("0", n)) log10(string) = string.length-1
+		inflatedAverageVariance = new BN(getForwardAdjustedString(inflatedAverageVariance.toFixed(decimals), decimals));
+		assert.equal(realizedVariance.toString().length, inflatedAverageVariance.toString().length, "correct amount of varance digits");
+		//we only check the first 15 digits because js floats are only accurate to 15 bits and we used floats to calculate expected variance
+		assert.equal(realizedVariance.toString().substring(0, 15), inflatedAverageVariance.toString().substring(0, 15), "correct variance founda");
+		cappedPayout = await varianceSwapHandlerInstance.payout();
+		expectedPayout = realizedVariance.cmp(new BN(cap)) == 1 ? new BN(cap) : realizedVariance;
+		assert.equal(cappedPayout.toString(), expectedPayout.toString(), "correct actual payout");
+	});
+
+	it('gives correct payout, use fetchNFromOracle()', async () => {
+		/*
+			we called getFirstPrice() in the last test
+			we called fetchNFromOracle(2) but only expect it to update for 1 day of prices
+			because we did not advance time far enough for the 2nd day price to be recorded
+		*/
+		let caught = false;
+		await varianceSwapHandlerInstance2.fetchNFromOracle(2);
+		await varianceSwapHandlerInstance2.fetchNFromOracle(1);
+		await varianceSwapHandlerInstance2.fetchFromOracle();
+		let remaining = "5";
+		let remainingPlus1 = "6";
+		try {
+			await varianceSwapHandlerInstance2.fetchNFromOracle(remainingPlus1);
+		} catch(err) {
+			caught = true
+		}
+		if (!caught) assert.fail("fetchNFromOracle() should only work where intervalsCalculated+N <= lengthOfPriceSeries");
+		await varianceSwapHandlerInstance2.fetchNFromOracle(remaining);
 		assert.equal(await varianceSwapHandlerInstance.ready(), true, "ready for claiming");
 		realizedVariance = await varianceSwapHandlerInstance.nonCappedPayout();
 		inflatedAverageVariance = getRealizedVariance(priceSeries);

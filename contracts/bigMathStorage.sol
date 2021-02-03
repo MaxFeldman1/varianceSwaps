@@ -4,7 +4,6 @@ contract bigMathStorage {
 	int[] public dailyReturns;
 	uint result;
 	int summationDailyReturns;
-	uint public seriesTermInflator;
 	uint public payoutAtVarianceOf1;
 	/*
 		Once we have the average daily variance we must annalize by multiplying by 365.2422 (the exact number of days per year)

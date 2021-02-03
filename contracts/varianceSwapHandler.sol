@@ -56,6 +56,8 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 
 	uint public totalSupplyShort;
 
+	int private constant intSeriesTermInflator = 1e36;
+
 	event Mint(
 		address to,
 		uint amount
@@ -94,8 +96,6 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 		lengthOfPriceSeries = _lengthOfPriceSeries;
 		cap = _cap;
 		payoutAtVarianceOf1 = _payoutAtVarianceOf1;
-		seriesTermInflator = 10**36;
-		//subUnitsPayout = uint(10)**(IERC20(_payoutAssetAddress).decimals());
 	}
 
 	function getDailyReturns() public view returns(int[] memory _dailyReturns) {_dailyReturns = dailyReturns;}
@@ -146,12 +146,56 @@ contract varianceSwapHandler is bigMathStorage, Ownable {
 			however if it is prevent div by 0
 		*/
 		if (price == 0) price++;
-		int _seriesTermInflator = int(seriesTermInflator);
-		int mulplicativeReturn = (price.mul(_seriesTermInflator)/previousPrice).sub(_seriesTermInflator);
+		int mulplicativeReturn = (price.mul(intSeriesTermInflator)/previousPrice).sub(intSeriesTermInflator);
 		summationDailyReturns += mulplicativeReturn;
 		previousPrice = price;
 		dailyReturns.push(mulplicativeReturn);
 		if (intervalsCalculated == lengthOfPriceSeries) {
+			(bool success, ) = bigMathAddress.delegatecall(abi.encodeWithSignature("seriesVariance()"));
+			uint _nonCappedPayout;
+			uint _cap = cap;
+			if (success) {
+				nonCappedPayout = result;
+				_nonCappedPayout = result;
+			} 
+			else {
+				nonCappedPayout = _cap;
+				_nonCappedPayout = _cap;
+			}
+			payout = (_nonCappedPayout < _cap) ? _nonCappedPayout : _cap;
+			ready = true;
+		}
+	}
+
+	function fetchNFromOracle(uint16 _N) external {
+		uint _intervalsCalculated = intervalsCalculated;
+		require(_intervalsCalculated + _N <= lengthOfPriceSeries);
+		require(previousPrice != 0 && !ready);
+		uint getAt = startTimestamp.add(uint(intervalsCalculated+1).mul(1 days));
+		uint16 i;
+		int _previousPrice = previousPrice;
+		int price;
+		int cumulativeMulplicativeReturns;
+		for ( ; i < _N && getAt < block.timestamp ; i++) {
+			{
+				(uint _price, ) = IOracleContainer(oracleContainerAddress).phraseToHistoricalPrice(phrase, getAt);
+				price = int(_price);
+			}
+			/*
+				this will likely never be a problem
+				however if it is prevent div by 0
+			*/
+			if (price == 0) price++;
+			int mulplicativeReturn = (price.mul(intSeriesTermInflator)/_previousPrice).sub(intSeriesTermInflator);
+			cumulativeMulplicativeReturns += mulplicativeReturn;
+			_previousPrice = price;
+			dailyReturns.push(mulplicativeReturn);
+			getAt += 1 days;
+		}
+		summationDailyReturns += cumulativeMulplicativeReturns;
+		previousPrice = price;
+		intervalsCalculated += i;
+		if (_intervalsCalculated+i == lengthOfPriceSeries) {
 			(bool success, ) = bigMathAddress.delegatecall(abi.encodeWithSignature("seriesVariance()"));
 			uint _nonCappedPayout;
 			uint _cap = cap;
