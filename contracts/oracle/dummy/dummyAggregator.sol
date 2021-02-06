@@ -1,19 +1,22 @@
 pragma solidity >=0.6.0;
 
-import "../interfaces/IAggregatorFacade.sol";
+import "../interfaces/IChainlinkAggregator.sol";
 
-contract dummyAggregator {
+contract dummyAggregator is IChainlinkAggregator {
 
 	struct round {
 		int answer;
 		uint timestamp;
 	}
 
-	uint8 public decimals;
+	uint8 public override decimals;
 	round[] rounds;
 
-	constructor(uint8 _decimals) public {
+	string public override description;
+
+	constructor(uint8 _decimals, string memory _description) public {
 		decimals = _decimals;
+		description = _description;
 		rounds.push(round(0, block.timestamp));
 	}
 
@@ -21,19 +24,19 @@ contract dummyAggregator {
 		rounds.push(round(_answer, block.timestamp));
 	}
 
-	function getTimestamp(uint _roundId) external view returns(uint) {
+	function getTimestamp(uint _roundId) external view override returns(uint) {
 		return rounds[_roundId].timestamp;
 	}
 
-	function getAnswer(uint _roundId) external view returns(int) {
+	function getAnswer(uint _roundId) external view override returns(int) {
 		return rounds[_roundId].answer;
 	}
 
-	function latestRound() external view returns(uint) {
+	function latestRound() external view override returns(uint) {
 		return rounds.length-1;
 	}
 
-	function latestAnswer() external view returns(int) {
+	function latestAnswer() external view override returns(int) {
 		return rounds[rounds.length-1].answer;
 	}
 

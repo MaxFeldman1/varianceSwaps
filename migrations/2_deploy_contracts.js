@@ -11,7 +11,6 @@ const deployERC20Tokens = artifacts.require("deployERC20Tokens");
 const deployStakeHub = artifacts.require("deployStakeHub");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
-const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
 const BN = web3.utils.BN;
@@ -23,7 +22,7 @@ const kovanETHUSDAggregatorFacadeAddr = "0x9326BFA02ADD2366b30bacB125260Af641031
 const kovanBalancerFactoryAddr = "0x8f7F78080219d4066A8036ccD30D588B416a40DB";
 
 const kovanAaveAUSDCAddr = "0xe12AFeC5aa12Cf614678f9bFeeB98cA9Bb95b5B0";
-
+//                               "0xA43617A5d4Ef97fF9D989e6788ca31304C54Cb1D"
 const kovanOracleContainerAddr = "0xA43617A5d4Ef97fF9D989e6788ca31304C54Cb1D";
 const kovanDeployERC20TokensAddr = "0x4B5f6dBE5f610B286AdA2a59b044b92944Cc00B7";
 const kovanDeployStakeHubAddr = "0x8877be10df2938676617A033C6C2B8299616D6bC";
@@ -47,14 +46,22 @@ module.exports = async function(deployer) {
   phrase = "ETH / USD";
 
   aggregatorFacadeInstance = await aggregatorFacade.at(kovanETHUSDAggregatorFacadeAddr);
-
+*//*
   //oracleContainerInstance = await deployer.deploy(oracleContainer);
   oracleContainerInstance = await oracleContainer.at(kovanOracleContainerAddr);
+  let phrase = "ETH / USD";
+  console.log(await oracleContainerInstance.PairInfo(phrase));
 
-  //await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
+  console.log('hej');
+  await oracleContainerInstance.addAggregators([kovanETHUSDAggregatorFacadeAddr]);
 
-  //await oracleContainerInstance.deploy(phrase);
+  console.log(oracleContainerInstance.PairInfo(phrase));
 
+  console.log('starting');
+  await oracleContainerInstance.deploy(phrase);
+  console.log('done');
+
+//*//*
   //tokenDeployerInstance = await deployer.deploy(deployERC20Tokens);
   tokenDeployerInstance = await deployERC20Tokens.at(kovanDeployERC20TokensAddr);
   //stakeHubDeployerInstance = await deployer.deploy(deployStakeHub);
@@ -68,6 +75,7 @@ module.exports = async function(deployer) {
   
   //organizerInstance = await deployer.deploy(organizer, bigMathInstance.address, oracleContainerInstance.address,
   //  tokenDeployerInstance.address, stakeHubDeployerInstance.address);
+*//*
   organizerInstance = await organizer.at(kovanOrganizerAddr);
   //await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
   //  _feb12021, "30", payoutAtVariance1, cap);
@@ -75,11 +83,17 @@ module.exports = async function(deployer) {
   //console.log('deployed variance');
 
   varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
+  try {
+    await varianceSwapHandlerInstance.getFirstPrice();
+  console.log('got first price');
+  } catch (err) {
+    console.log('major oof my G');
+  }
 
-  lvtAddress = await varianceSwapHandlerInstance.longVarianceTokenAddress();
-  svtAddress = await varianceSwapHandlerInstance.shortVarianceTokenAddress()
-  lvtContract = await longVarianceToken.at(lvtAddress);
-  svtContract = await shortVarianceToken.at(svtAddress);
+  //lvtAddress = await varianceSwapHandlerInstance.longVarianceTokenAddress();
+  //svtAddress = await varianceSwapHandlerInstance.shortVarianceTokenAddress()
+  //lvtContract = await longVarianceToken.at(lvtAddress);
+  //svtContract = await shortVarianceToken.at(svtAddress);
 
 /*
   console.log(lvtAddress, svtAddress);

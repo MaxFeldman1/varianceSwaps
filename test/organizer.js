@@ -11,7 +11,6 @@ const deployERC20Tokens = artifacts.require("deployERC20Tokens");
 const deployStakeHub = artifacts.require("deployStakeHub");
 const oracleContainer = artifacts.require("OracleContainer");
 const baseAggregator = artifacts.require("dummyAggregator");
-const aggregatorFacade = artifacts.require("dummyAggregatorFacade");
 const lendingPool = artifacts.require("DummyLendingPool");
 
 const defaultAddress = "0x0000000000000000000000000000000000000000";
@@ -26,11 +25,10 @@ contract('organizer', async function(accounts){
 
 		phrase = "FDMX/WBTC";
 
-		baseAggregatorInstance = await baseAggregator.new(3);
-		aggregatorFacadeInstance = await aggregatorFacade.new(baseAggregatorInstance.address, phrase);
+		baseAggregatorInstance = await baseAggregator.new(3, phrase);
 		oracleContainerInstance = await oracleContainer.new();
 
-		await oracleContainerInstance.addAggregators([aggregatorFacadeInstance.address]);
+		await oracleContainerInstance.addAggregators([baseAggregatorInstance.address]);
 		await oracleContainerInstance.deploy(phrase);
 
 		factoryInstance = await factory.new(defaultAddress);

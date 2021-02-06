@@ -4,7 +4,7 @@ import "../Ownable.sol";
 import "./Oracle.sol";
 import "./interfaces/IFeldmexOracle.sol";
 import "./interfaces/IOracleContainer.sol";
-import "./interfaces/IAggregatorFacade.sol";
+import "./interfaces/IChainlinkAggregator.sol";
 
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV2V3Interface.sol";
 
@@ -28,10 +28,9 @@ contract OracleContainer is Ownable, IOracleContainer {
 		uint length = _facades.length;
 		for (uint i = 0; i < length; i++) {
 			address facade = _facades[i];
-			address addr = address(IAggregatorFacade(facade).aggregator());
-			string memory description = IAggregatorFacade(facade).description();
+			string memory description = IChainlinkAggregator(facade).description();
 			require(PairInfo[description].baseAggregatorAddress == address(0));
-			PairInfo[description].baseAggregatorAddress = addr;
+			PairInfo[description].baseAggregatorAddress = facade;
 		}
 	}
 
