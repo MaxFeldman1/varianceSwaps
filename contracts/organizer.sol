@@ -15,6 +15,9 @@ contract organizer is Ownable {
 
 	address[] public varianceSwapInstances;
 
+	// 0.5% or 50 basis points
+	uint internal constant defaultFee = 50;
+
 	event DeployStakeHub(
 		uint varSwapIndex,
 		address varSwapAddress,
@@ -53,6 +56,10 @@ contract organizer is Ownable {
 
 		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, _oracleContainerAddress,
 			bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
+
+		vsh.setFee(defaultFee);
+
+		vsh.transferOwnership(owner);
 
 		address _tokenDeployerAddress = tokenDeployerAddress;
 

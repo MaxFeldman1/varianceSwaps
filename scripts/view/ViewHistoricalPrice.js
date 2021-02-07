@@ -11,11 +11,10 @@ const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : requir
 /*
 
 	@argv0 phrase
+	@argv1 timestamp
 
 */
 const possibleNetworkArgs = ['--network', 'rinkeby', 'kovan', 'mainnet'];
-
-const timestamp = "1600099775";
 
 const BN = web3.utils.BN;
 
@@ -38,25 +37,11 @@ module.exports = async function(callback) {
 	}
 	let OracleContainerInstance = await OracleContainer.at(ADDRS.OracleContainerAddr);
 	let phrase = await askQuestion("Phrase for oracle to deploy");
+	let timestamp = await askQuestion("What is the unix timestamp at which you would like to find the price");
 	try {
-		//let oracleAddress = await OracleContainerInstance.OracleAddress(phrase);
-		let baseAggregatorAddress = await OracleContainerInstance.BaseAggregatorAddress(phrase);
-		//console.log(oracleAddress);
-		//let oracle = await IFeldmexOracle.at(oracleAddress);
-		let baseAggregator = await IChainlinkAggregator.at(baseAggregatorAddress);
-		let original = (await baseAggregator.latestRound());
-		let str = original.toString(2);
-		str = str.substring(str.length-32);
-		let res = parseInt(str, 2);
-		console.log(str, res);
-		console.log((await baseAggregator.getTimestamp(original.toString())).toString());
-		console.log((await baseAggregator.getTimestamp(original.sub(new BN(res)).toString())).toString());
-		console.log((await baseAggregator.getTimestamp(original.sub(new BN(res+1)).toString())).toString());
-		console.log((await baseAggregator.getTimestamp(res)).toString());
-		//console.log((await baseAggregator.latestRound()).toString(2));
-
-		//console.log((await oracle.decimals()).toString());
-		//console.log((await oracle.fetchRoundAtTimestamp(timestamp)).toString());
+		let result = await OracleContainerInstance.phraseToHistoricalPrice(phrase, timestamp);
+		console.log("price:", result.spot.toString());
+		console.log("decimals:", result.decimals.toString());
 	} catch (err) {
 		console.log('Transaction Reverted');
 		console.error(err);

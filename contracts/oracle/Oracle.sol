@@ -12,15 +12,16 @@ contract Oracle is IFeldmexOracle {
 
     uint80 constant uint80LeadingBit = (1 << 79);
 
+    uint80 internal immutable roundIdLeadingBits;
+
     constructor (address _aggregatorAddress) public {
         ai = AggregatorV2V3Interface(_aggregatorAddress);
+        uint80 temp = uint80(AggregatorV2V3Interface(_aggregatorAddress).latestRound());
+        roundIdLeadingBits = temp - (temp & roundIdMask);
     }
 
     function getTimestamp(uint80 _roundId) internal view returns (uint timestamp) {
-        timestamp = ai.getTimestamp(_roundId);
-        if (timestamp == 0) {
-            timestamp = ai.getTimestamp(uint80LeadingBit ^ _roundId);
-        }
+        timestamp = ai.getTimestamp(roundIdLeadingBits ^ _roundId);
     }
 
     function fetchRoundBehind(uint80 _roundId) internal view returns (uint, uint80) {
@@ -33,12 +34,9 @@ contract Oracle is IFeldmexOracle {
     }
 
     function fetchSpotAtTime(uint timestamp) public view override returns (uint price) {
+        uint _roundId = fetchRoundAtTimestamp(timestamp);
         //we can safely assume that the price will never be negative
-        uint roundId = fetchRoundAtTimestamp(timestamp);
-        price = uint(ai.getAnswer(roundId));
-        if (price == 0) {
-            price = uint(ai.getAnswer(roundId ^ uint80LeadingBit));
-        }
+        price = uint(ai.getAnswer(roundIdLeadingBits ^ _roundId));
     }
 
     function fremostRoundWithSameTimestamp(uint80 _roundId) internal view returns (uint) {
@@ -77,6 +75,6 @@ contract Oracle is IFeldmexOracle {
         } while (next != back);
         (,back) = fetchRoundBehind(back);
         return fremostRoundWithSameTimestamp(back);
-    }    
+    }
 
 }

@@ -19,10 +19,10 @@ let isOnMainnet = false;
 const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : require('../../helper/KovanAddresses.js');
 
 /*
-
-	@argv0: inflator0
-	@argv1: inflator1
-	@argv2: inflator2
+	@argv0: index of variance swap instance
+	@argv1: inflator0
+	@argv2: inflator1
+	@argv3: inflator2
 
 */
 const possibleNetworkArgs = ['--network', 'rinkeby', 'kovan', 'mainnet'];
@@ -155,6 +155,15 @@ module.exports = async function(callback) {
 		await pool2.bind(svtAddress, amtSwaps, _50pctWeight);
 
 		console.log('pool2 binds done');
+
+		let _1pctFee = "1" + "0".repeat(16);
+
+		console.log('set pool 0 fee');
+		await pool0.setSwapFee(_1pctFee);
+		console.log('set pool 1 fee');
+		await pool1.setSwapFee(_1pctFee);
+		console.log('set pool 2 fee');
+		await pool2.setSwapFee(_1pctFee);
 
 		console.log('finalize pool 0 ...');
 		await pool0.finalize();
