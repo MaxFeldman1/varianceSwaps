@@ -4,7 +4,7 @@ const BigMath = artifacts.require("BigMath");
 
 let isOnMainnet = false;
 
-const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('../helper/KovanAddresses.js');
+const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : require('../../helper/KovanAddresses.js');
 
 module.exports = async function(callback) {
 

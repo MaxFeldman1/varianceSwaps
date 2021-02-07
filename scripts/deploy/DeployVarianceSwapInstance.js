@@ -1,9 +1,11 @@
+const readline = require('readline');
+
 const organizer = artifacts.require("organizer");
 const IERC20 = artifacts.require("IERC20");
 
 let isOnMainnet = false;
 
-const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('../helper/KovanAddresses.js');
+const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : require('../../helper/KovanAddresses.js');
 
 /*
 	@argv0: phrase
@@ -13,20 +15,21 @@ const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('
 	@argv4: payout cap
 */
 
+const possibleNetworkArgs = ['--network', 'rinkeby', 'kovan', 'mainnet'];
 
 module.exports = async function(callback) {
 	var processedArgs = 4;
-	function askQuestion(query) {
-		if (processedArgs < process.argv.length){
+	let args = process.argv.filter(x => !possibleNetworkArgs.includes(x.toLowerCase()));
+	async function askQuestion(query) {
+		if (processedArgs < args.length){
 			processedArgs++;
-			return process.argv[processedArgs-1];
+			return args[processedArgs-1];
 		}
 	    const rl = readline.createInterface({
 	        input: process.stdin,
 	        output: process.stdout,
 	    });
-
-	    return new Promise(resolve => rl.question(query, ans => {
+	    return await new Promise(resolve => rl.question((query+'\n'), ans => {
 	        rl.close();
 	        resolve(ans);
 	    }))

@@ -1,3 +1,5 @@
+const readline = require('readline');
+
 const organizer = artifacts.require("organizer");
 const IERC20 = artifacts.require("IERC20");
 const factory = artifacts.require("BFactory");
@@ -14,7 +16,7 @@ const _50pctWeight = "5"+"0".repeat(18);
 
 let isOnMainnet = false;
 
-const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('../helper/KovanAddresses.js');
+const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : require('../../helper/KovanAddresses.js');
 
 /*
 
@@ -23,29 +25,32 @@ const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('
 	@argv2: inflator2
 
 */
+const possibleNetworkArgs = ['--network', 'rinkeby', 'kovan', 'mainnet'];
 
 module.exports = async function(callback) {
 	var processedArgs = 4;
-	function askQuestion(query) {
-		if (processedArgs < process.argv.length){
+	let args = process.argv.filter(x => !possibleNetworkArgs.includes(x.toLowerCase()));
+	async function askQuestion(query) {
+		if (processedArgs < args.length){
 			processedArgs++;
-			return process.argv[processedArgs-1];
+			return args[processedArgs-1];
 		}
-	    const rl = readline.createInterface({
-	        input: process.stdin,
-	        output: process.stdout,
-	    });
-
-	    return new Promise(resolve => rl.question(query, ans => {
-	        rl.close();
-	        resolve(ans);
-	    }))
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+		return await new Promise(resolve => rl.question((query+'\n'), ans => {
+			rl.close();
+			resolve(ans);
+		}))
 	}
 
 	let accounts = await web3.eth.getAccounts();
 	let balance = await web3.eth.getBalance(accounts[0]);
 
-	let factorInstance;
+	let factoryInstance;
+	let tokenInstance;
+	let organizerInstance;
 	let varianceSwapIndex;
 	let lvtAddress;
 	let svtAddress;
@@ -55,11 +60,14 @@ module.exports = async function(callback) {
 	let inflator1;
 	let inflator2;
 	try {
+		factoryInstance = await factory.at(ADDRS.BalancerFactoryAddr);
+		tokenInstance = await IERC20.at(ADDRS.AaveAUSDCAddr);
+		organizerInstance = await organizer.at(ADDRS.OrganizerAddr);
+		varianceSwapIndex = await askQuestion("What is the index of the Variance Swap handler");
 		inflator0 = await askQuestion("What shall inflator0 be");
 		inflator1 = await askQuestion("What shall inflator1 be");
 		inflator2 = await askQuestion("What shall inflator2 be");
 		console.log("Fetching prerequisite contracts");
-		factorInstance = await BFactory.at(ADDRS.BalancerFactoryAddr);
 		varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(varianceSwapIndex));
 		if (await varianceSwapHandlerInstance.sendFeeTo() != defaultAddress) {
 			console.log("Error: this variance swap instance already has a stake hub contract attached");
@@ -73,6 +81,7 @@ module.exports = async function(callback) {
 		console.log('Fetched prerequisite contracts');
 	} catch (err) {
 		console.log("Error: you must deploy the prerequisite organizer contract before you deploy a variance swap instance");
+		console.error(err);
 		callback();
 		return;
 	}
@@ -169,6 +178,7 @@ module.exports = async function(callback) {
 
 	} catch (err) {
 		console.log("Error: Deployment failed check console to see what failed, reference etherscan for more help");
+		console.error(err);
 	}
 
 	callback();

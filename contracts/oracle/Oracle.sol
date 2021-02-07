@@ -8,28 +8,43 @@ contract Oracle is IFeldmexOracle {
 
     AggregatorV2V3Interface ai;
 
+    uint80 constant roundIdMask = 0xFFFFFFFF;
+
+    uint80 constant uint80LeadingBit = (1 << 79);
+
     constructor (address _aggregatorAddress) public {
         ai = AggregatorV2V3Interface(_aggregatorAddress);
     }
 
+    function getTimestamp(uint80 _roundId) internal view returns (uint timestamp) {
+        timestamp = ai.getTimestamp(_roundId);
+        if (timestamp == 0) {
+            timestamp = ai.getTimestamp(uint80LeadingBit ^ _roundId);
+        }
+    }
+
     function fetchRoundBehind(uint80 _roundId) internal view returns (uint, uint80) {
-        uint timestamp = ai.getTimestamp(_roundId);
+        uint timestamp = getTimestamp(_roundId);
         while (timestamp == 0 && _roundId > 0) {
             _roundId--;
-            timestamp = ai.getTimestamp(_roundId);
+            timestamp = getTimestamp(_roundId);
         }
         return (timestamp, _roundId);
     }
 
     function fetchSpotAtTime(uint timestamp) public view override returns (uint price) {
         //we can safely assume that the price will never be negative
-        price = uint(ai.getAnswer(fetchRoundAtTimestamp(timestamp)));
+        uint roundId = fetchRoundAtTimestamp(timestamp);
+        price = uint(ai.getAnswer(roundId));
+        if (price == 0) {
+            price = uint(ai.getAnswer(roundId ^ uint80LeadingBit));
+        }
     }
 
-    function fremostRoundWithSameTimestamp(uint _roundId) internal view returns (uint) {
-        uint timestamp = ai.getTimestamp(_roundId);
+    function fremostRoundWithSameTimestamp(uint80 _roundId) internal view returns (uint) {
+        uint timestamp = getTimestamp(_roundId);
         _roundId++;
-        while (timestamp == ai.getTimestamp(_roundId)) _roundId++;
+        while (timestamp == getTimestamp(_roundId)) _roundId++;
         return _roundId-1;
     }
 
@@ -37,12 +52,16 @@ contract Oracle is IFeldmexOracle {
         return ai.decimals();
     }
 
+    function latestRound() internal view returns(uint80) {
+        return roundIdMask & uint80(ai.latestRound());
+    }
+
     function fetchRoundAtTimestamp(uint timestamp) public view override returns (uint) {
-        uint80 latest = uint80(ai.latestRound());
+        uint80 latest = latestRound();
         (uint fetchedTime, uint80 fetchedRound) = fetchRoundBehind(latest);
         if (timestamp >= fetchedTime) return fetchedRound;
         latest = fetchedRound;
-        uint80 back; // = 0
+        uint80 back;
         uint80 next;
         uint80 round = latest >> 1;
         do {

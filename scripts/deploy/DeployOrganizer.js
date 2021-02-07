@@ -6,7 +6,7 @@ const organizer = artifacts.require("organizer");
 
 let isOnMainnet = false;
 
-const ADDRS = isOnMainnet ? require('../helper/MainnetAddresses.js') : require('../helper/KovanAddresses.js');
+const ADDRS = isOnMainnet ? require('../../helper/MainnetAddresses.js') : require('../../helper/KovanAddresses.js');
 
 module.exports = async function(callback) {
 
@@ -30,15 +30,16 @@ module.exports = async function(callback) {
 	try {
 		console.log('Deploy organizer contract');
 	  	let organizerInstance = await organizer.new(
-	  		bigMathInstance.address,
-	  		oracleContainerInstance.address,
+	  		BigMathInstance.address,
+	  		OracleContainerInstance.address,
 	  		tokenDeployerInstance.address,
 	  		stakeHubDeployerInstance.address
 	  	);
 	  	console.log('Sucessfully deployed organizer contract');
-	  	console.log('Deployed at address', organizerInstance.address);
+	  	console.log('Deployed at address------', organizerInstance.address);
 	} catch (err) {
 		console.log("Error Deployment transaction failed");
+		console.error(err);
 	}
 
 	callback();
