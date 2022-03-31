@@ -42,24 +42,35 @@ contract('organizer', async function(accounts){
 		longShotDeployerInstance = await deployERC20Tokens.new();
 		stakeHubDeployerInstance = await deployStakeHub.new();
 
-		organizerInstance = await organizer.new(bigMathInstance.address, oracleContainerInstance.address,
-			longShotDeployerInstance.address, stakeHubDeployerInstance.address);
-
+		organizerInstance = await organizer.new(
+			bigMathInstance.address,
+			oracleContainerInstance.address,
+			longShotDeployerInstance.address,
+			stakeHubDeployerInstance.address
+		);
 		_10to27BN = (new BN(10)).pow(new BN(27));
 		normalizedIncome = _10to27BN;
 		await tokenInstance.mintTo(accounts[0], (new BN(10)).pow(new BN(20)));
 		await lendingPoolInstance.setReserveNormalizedIncome(underlyingAssetAddress, normalizedIncome.toString());
 	});
 
-	it('deploys variance swap handlers', async () => {
-		await organizerInstance.deployVarianceInstance(phrase, tokenInstance.address,
-    		"3000000000", "90", payoutAtVariance1, cap);
+	it('deployVarianceInstance()', async () => {
+		await organizerInstance.deployVarianceInstance(
+			phrase,
+			tokenInstance.address,
+    		"3000000000",
+    		"90",
+    		payoutAtVariance1,
+    		cap,
+    		{from: await organizerInstance.owner()}
+    	);
 		varianceSwapHandlerInstance = await varianceSwapHandler.at(await organizerInstance.varianceSwapInstances(0));
 		longVarianceTokenInstance = await longVarianceToken.at(await varianceSwapHandlerInstance.longVarianceTokenAddress());
 		shortVarianceTokenInstance = await shortVarianceToken.at(await varianceSwapHandlerInstance.shortVarianceTokenAddress());
+		assert.equal(await varianceSwapHandlerInstance.owner(), organizerInstance.address);
 	});
 
-	it('adds stakeHub', async () => {
+	it('addStakeHub()', async () => {
 		stakeable0 = defaultAddress;
 		stakeable1 = defaultAddress.substring(0, defaultAddress.length-1)+"1";
 		stakeable2 = defaultAddress.substring(0, defaultAddress.length-1)+"2";
@@ -74,7 +85,14 @@ contract('organizer', async function(accounts){
 		assert.equal((await stakeHubInstance.inflator0()).toString(), inflator0, "correct value of inflator0");
 		assert.equal((await stakeHubInstance.inflator1()).toString(), inflator1, "correct value of inflator1");
 		assert.equal((await stakeHubInstance.inflator2()).toString(), inflator2, "correct value of inflator2");
+		assert.equal(await varianceSwapHandlerInstance.owner(), organizerInstance.address);
 	});
 
+	it('claimOwnership()', async function () {
+		await organizerInstance.claimOwnership(0);
+		let vshOwner = await varianceSwapHandlerInstance.owner();
+		let orgOwner = await organizerInstance.owner();
+		assert.equal(vshOwner, orgOwner);
+	})
 
 });

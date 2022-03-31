@@ -16,7 +16,7 @@ contract organizer is Ownable {
 	address[] public varianceSwapInstances;
 
 	// 0.5% or 50 basis points
-	uint internal constant defaultFee = 50;
+	uint8 internal constant defaultFee = 50;
 
 	event DeployStakeHub(
 		uint varSwapIndex,
@@ -44,8 +44,14 @@ contract organizer is Ownable {
 	}
 
 
-	function deployVarianceInstance(string memory _phrase, address _payoutAssetAddress,
-		uint _startTimestamp, uint16 _lengthOfPriceSeries, uint _payoutAtVarianceOf1, uint _cap) public onlyOwner {
+	function deployVarianceInstance(
+		string memory _phrase,
+		address _payoutAssetAddress,
+		uint _startTimestamp,
+		uint16 _lengthOfPriceSeries,
+		uint _payoutAtVarianceOf1,
+		uint _cap
+	) public onlyOwner {
 
 		/*
 			fetch latest price from oracleContainer pass phrase
@@ -54,12 +60,18 @@ contract organizer is Ownable {
 		address _oracleContainerAddress = oracleContainerAddress;	//gas savings
 		require(IOracleContainer(_oracleContainerAddress).OracleAddress(_phrase) != address(0));
 
-		varianceSwapHandler vsh = new varianceSwapHandler(_phrase, _payoutAssetAddress, _oracleContainerAddress,
-			bigMathAddress, _startTimestamp, _lengthOfPriceSeries, _payoutAtVarianceOf1, _cap);
+		varianceSwapHandler vsh = new varianceSwapHandler(
+			_phrase,
+			_payoutAssetAddress,
+			_oracleContainerAddress,
+			bigMathAddress,
+			_startTimestamp,
+			_lengthOfPriceSeries,
+			_payoutAtVarianceOf1,
+			_cap
+		);
 
 		vsh.setFee(defaultFee);
-
-		vsh.transferOwnership(owner);
 
 		address _tokenDeployerAddress = tokenDeployerAddress;
 
@@ -70,6 +82,8 @@ contract organizer is Ownable {
 		address shortVariance = deployERC20Tokens(_tokenDeployerAddress).shortVarAddress();
 
 		vsh.setAddresses(longVariance, shortVariance);
+
+		//vsh.transferOwnership(msg.sender);
 
 		varianceSwapInstances.push(address(vsh));
 	}
@@ -82,8 +96,7 @@ contract organizer is Ownable {
 		uint8 _inflator0,
 		uint8 _inflator1,
 		uint8 _inflator2
-
-		) public onlyOwner {
+	) public onlyOwner {
 
 		require(_index < varianceSwapInstances.length, "index is not in bound");
 
@@ -116,8 +129,11 @@ contract organizer is Ownable {
 
 		vsh.setSendFeeAddress(_stakeHubAddress);
 
-		vsh.transferOwnership(owner);
-
 		emit DeployStakeHub(_index, _varianceAddress, _stakeHubAddress);
+	}
+
+	function claimOwnership(uint _index) external onlyOwner {
+		require(_index < varianceSwapInstances.length, "index is not in bound");
+		varianceSwapHandler(varianceSwapInstances[_index]).transferOwnership(msg.sender);
 	}
 }
